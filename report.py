@@ -33,7 +33,8 @@ def build_markdown_report(repos: list, date: str) -> str:
     lines.append("---\n")
     for i, repo in enumerate(repos, start=1):
         anchor = repo["name"].lower().replace(" ", "-").replace("/", "")
-        lines.append(f"## {i}. 🔗 [{repo['name']}]({repo['url']}) {{#{anchor}}}\n")
+        lines.append(f'<a id="{anchor}"></a>\n')
+        lines.append(f"## {i}. 🔗 [{repo['name']}]({repo['url']})\n")
         lines.append(f"**⭐ Relevance Score:** `{repo['relevance_score']}/100`\n")
         lines.append(f"**💡 Why this repo?**\n{repo['reason']}\n")
         lines.append(f"**📝 Summary**\n{repo['summary']}\n")
