@@ -27,7 +27,7 @@ jobs:
           SMTP_HOST: ${{ vars.SMTP_HOST }}
           SMTP_PORT: ${{ vars.SMTP_PORT }}
           SMTP_USER: ${{ secrets.SMTP_USER }}
-          EMAIL_TO: ${{ vars.EMAIL_TO }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
         run: python agent.py
 
       - name: Commit updated state back to repository
