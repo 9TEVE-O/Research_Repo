@@ -124,9 +124,20 @@ def _latest_commit_hash(repo: Any) -> str:
         commits = repo.get_commits()
         return commits[0].sha[:12]
     except Exception:  # noqa: BLE001
-        return "unknown"
+        repo_id = getattr(repo, "id", None)
+        pushed_at = getattr(repo, "pushed_at", None)
+        if isinstance(pushed_at, datetime):
+            pushed_marker = pushed_at.astimezone(timezone.utc).strftime("%Y%m%d%H%M%S")
+        elif pushed_at is None:
+            pushed_marker = "nopushedat"
+        else:
+            pushed_marker = str(pushed_at)
 
+        if repo_id is not None:
+            return f"repo-{repo_id}-{pushed_marker}"
 
+        repo_name = getattr(repo, "full_name", None) or getattr(repo, "name", None) or "unknown-repo"
+        return f"{repo_name}@{pushed_marker}"
 def _safe_readme(repo: Any) -> str:
     try:
         return repo.get_readme().decoded_content.decode("utf-8", errors="ignore")[:3000]
