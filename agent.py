@@ -137,7 +137,8 @@ def search_repos(gh: Github, state: dict[str, Any]) -> list[dict[str, Any]]:
                         "readme": readme,
                     }
                 )
-        except Exception:  # noqa: BLE001
+        except Exception:
+            traceback.print_exc()
             traceback.print_exc()
 
     return candidates
