@@ -379,7 +379,7 @@ def main() -> None:
     # 6. Send email
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     send_email(
-        subject=f"[Research Agent] Daily Top-{TOP_N} AI Repos – {today}",
+        subject=f"[Research Agent] Daily Top-{len(top_repos)} AI Repos – {today}",
         body=report_text,
     )
 
