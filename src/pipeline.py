@@ -323,6 +323,7 @@ class AgentPipeline:
         )
         self.graph.record_result(step_id, result)
         self._evidence.append(result)
+        self._evidence_reconciled = False
         # Mark transform as not-yet-verified until verify_visual_step() is called
         self._completed_transforms[transform_id] = False
         return result
