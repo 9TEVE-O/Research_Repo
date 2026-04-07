@@ -428,7 +428,7 @@ class AgentPipeline:
             clue
             for clue in all_clues
             if not any(
-                clue in str(sr.output)
+                clue in (str(sr.output) if sr.output is not None else '')
                 for sr in search_results
             )
         ]
