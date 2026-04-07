@@ -40,7 +40,7 @@ from github import Github
 # Configuration
 # ---------------------------------------------------------------------------
 
-GITHUB_TOKEN: str = os.environ["GITHUB_TOKEN"]
+GITHUB_TOKEN: str = os.environ.get("GITHUB_TOKEN", "")
 OPENAI_API_KEY: str = os.environ["OPENAI_API_KEY"]
 SMTP_PASSWORD: str = os.environ.get("SMTP_PASSWORD", "")
 SMTP_HOST: str = os.environ.get("SMTP_HOST") or "smtp.gmail.com"
