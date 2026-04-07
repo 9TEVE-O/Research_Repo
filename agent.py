@@ -11,7 +11,9 @@ Environment variables required:
     SMTP_USER      – Sender email / SMTP login
     SMTP_PASSWORD  – Sender SMTP password
     REPORT_RECIPIENT – Email address to send the report to
-    GIST_ID        – ID of the Gist to update (created if absent)
+
+Optional environment variables:
+    GIST_ID        – ID of the Gist to update; if unset, Gist upload is skipped
 """
 
 import logging
