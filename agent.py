@@ -78,9 +78,33 @@ def load_state() -> dict[str, Any]:
     return {"seen_hashes": [], "seen_embeddings": [], "keyword_boosts": {}}
 
 
+def _round_embedding_value(value: Any, precision: int = 4) -> Any:
+    """Reduce persisted embedding precision to keep state compact."""
+    if isinstance(value, float):
+        return round(value, precision)
+    if isinstance(value, list):
+        return [_round_embedding_value(item, precision) for item in value]
+    if isinstance(value, dict):
+        return {
+            key: _round_embedding_value(item, precision) for key, item in value.items()
+        }
+    return value
+
+
+def _state_for_persistence(state: dict[str, Any]) -> dict[str, Any]:
+    """Return a compact copy of state suitable for JSON persistence."""
+    persisted_state = dict(state)
+    if "seen_embeddings" in persisted_state:
+        persisted_state["seen_embeddings"] = _round_embedding_value(
+            persisted_state["seen_embeddings"]
+        )
+    return persisted_state
+
+
 def save_state(state: dict[str, Any]) -> None:
     STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    STATE_PATH.write_text(json.dumps(state, indent=2))
+    persisted_state = _state_for_persistence(state)
+    STATE_PATH.write_text(json.dumps(persisted_state, separators=(",", ":")))
 
 
 # ---------------------------------------------------------------------------
