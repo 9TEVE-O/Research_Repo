@@ -149,6 +149,8 @@ def _cosine_similarity(a: list[float], b: list[float]) -> float:
 
 
 def get_embedding(client: openai.OpenAI, text: str) -> list[float]:
+    # text-embedding-3-small supports up to 8191 tokens; 8000 characters is a
+    # conservative character-level approximation that stays safely under that limit.
     response = client.embeddings.create(
         model="text-embedding-3-small",
         input=text[:8000],
@@ -346,11 +348,12 @@ def main() -> None:
         body=report_text,
     )
 
-    # 7. Update persistent state
+    # 7. Update persistent state – only record repos that were actually reported
+    #    so that scored-but-not-selected repos remain eligible for future runs.
     seen_hashes: list[str] = state.get("seen_hashes", [])
     seen_embeddings: list[list[float]] = state.get("seen_embeddings", [])
 
-    for repo in scored:
+    for repo in top_repos:
         seen_hashes.append(repo["dedup_key"])
         if "embedding" in repo:
             seen_embeddings.append(repo["embedding"])

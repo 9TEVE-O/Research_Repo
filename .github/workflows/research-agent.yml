@@ -7,6 +7,8 @@ on:
 jobs:
   scan:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed to commit state and report back to the repository
     steps:
       - uses: actions/checkout@v4
 
@@ -15,7 +17,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install requests openai PyGithub
+        run: pip install -r requirements.txt
 
       - name: Run research agent
         env:
