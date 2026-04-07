@@ -1,0 +1,18 @@
+# Python byte-code cache
+__pycache__/
+*.py[cod]
+
+# Reports are generated at runtime; only the placeholder is tracked
+reports/latest.md
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Pytest cache
+.pytest_cache/
+
+# Coverage reports
+.coverage
+htmlcov/
