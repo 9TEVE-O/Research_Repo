@@ -43,8 +43,8 @@ from github import Github
 GITHUB_TOKEN: str = os.environ["GITHUB_TOKEN"]
 OPENAI_API_KEY: str = os.environ["OPENAI_API_KEY"]
 SMTP_PASSWORD: str = os.environ.get("SMTP_PASSWORD", "")
-SMTP_HOST: str = os.environ.get("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT: int = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_HOST: str = os.environ.get("SMTP_HOST") or "smtp.gmail.com"
+SMTP_PORT: int = int(os.environ.get("SMTP_PORT") or "587")
 SMTP_USER: str = os.environ.get("SMTP_USER", "")
 EMAIL_TO: str = os.environ.get("EMAIL_TO", "")
 
