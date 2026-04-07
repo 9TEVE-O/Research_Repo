@@ -34,7 +34,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add state/seen_repos.json reports/latest.md || true
+          git add state/seen_repos.json
+          git add -f reports/latest.md
           git diff --cached --quiet || git commit -m "chore: update research report and state [skip ci]"
           git push
 
