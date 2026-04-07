@@ -146,18 +146,31 @@ class DependencyGraph:
         """Store the result produced by a step.
 
         :raises KeyError: If *step_id* is not registered.
+        :raises ValueError: If *result* does not match the registered step's
+            identifier or type.
         :raises RuntimeError: If one or more declared dependencies have not
             yet recorded results.
         """
         if step_id not in self._nodes:
             raise KeyError(f"Step '{step_id}' is not registered in the dependency graph.")
+        node = self._nodes[step_id]
+        if result.step_id != step_id:
+            raise ValueError(
+                f"Result step_id '{result.step_id}' does not match registered step "
+                f"'{step_id}'."
+            )
+        if result.step_type != node.step_type:
+            raise ValueError(
+                f"Result step_type '{result.step_type}' does not match registered "
+                f"step type '{node.step_type}' for step '{step_id}'."
+            )
         unsatisfied = self._unsatisfied_dependencies(step_id)
         if unsatisfied:
             raise RuntimeError(
                 f"Step '{step_id}' cannot record a result because the "
                 f"following dependencies have not yet completed: {unsatisfied}"
             )
-        self._nodes[step_id].result = result
+        node.result = result
 
     def _unsatisfied_dependencies(self, step_id: str) -> list[str]:
         node = self._nodes[step_id]
