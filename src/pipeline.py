@@ -400,6 +400,7 @@ class AgentPipeline:
         )
         self.graph.record_result(step_id, result)
         self._evidence.append(result)
+        self._evidence_reconciled = False
         return result
 
     # ------------------------------------------------------------------
