@@ -11,7 +11,7 @@ Daily pipeline:
 
 Required environment variables
 -------------------------------
-  GITHUB_TOKEN    – GitHub personal-access-token (read:repo scope is enough)
+  GITHUB_TOKEN    – GitHub personal access token (classic PAT: `public_repo` for public repos or `repo` for private repos; fine-grained token: read access to repository contents/metadata)
   OPENAI_API_KEY  – OpenAI API key
   SMTP_PASSWORD   – Password for the outbound SMTP account
   SMTP_HOST       – SMTP server hostname  (default: smtp.gmail.com)
