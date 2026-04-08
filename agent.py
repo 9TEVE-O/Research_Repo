@@ -45,7 +45,8 @@ OPENAI_API_KEY: str = os.environ.get("OPENAI_API_KEY", "")
 SMTP_PASSWORD: str = os.environ.get("SMTP_PASSWORD", "")
 SMTP_HOST: str = os.environ.get("SMTP_HOST") or "smtp.gmail.com"
 SMTP_PORT: int = int(os.environ.get("SMTP_PORT") or "587")
-SMTP_USER: str = os.environ.get("SMTP_USER", "")
+_smtp_port = os.environ.get("SMTP_PORT") or "587"
+SMTP_PORT: int = int(_smtp_port) if _smtp_port.isdigit() else 587
 EMAIL_TO: str = os.environ.get("EMAIL_TO", "")
 
 STATE_PATH = Path("state/seen_repos.json")
