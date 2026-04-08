@@ -145,25 +145,39 @@ def search_repos(gh: Github, state: dict[str, Any]) -> list[dict[str, Any]]:
     return candidates
 
 
+def _stable_repo_marker(repo: Any) -> str:
+    repo_id = getattr(repo, "id", None)
+    repo_name = getattr(repo, "full_name", None) or getattr(repo, "name", None) or "unknown-repo"
+    repo_marker = f"repo-{repo_id}" if repo_id is not None else repo_name
+
+    activity_at = getattr(repo, "pushed_at", None) or getattr(repo, "updated_at", None)
+    if isinstance(activity_at, datetime):
+        activity_marker = activity_at.astimezone(timezone.utc).strftime("%Y%m%d%H%M%S")
+    elif activity_at is None:
+        activity_marker = None
+    else:
+        activity_marker = str(activity_at)
+
+    if activity_marker is not None:
+        return f"{repo_marker}-{activity_marker}"
+
+    return repo_marker
+
+
 def _latest_commit_hash(repo: Any) -> str:
+    stable_marker = _stable_repo_marker(repo)
+    if stable_marker.endswith("-None"):
+        stable_marker = stable_marker[:-5]
+
+    activity_at = getattr(repo, "pushed_at", None) or getattr(repo, "updated_at", None)
+    if activity_at is not None:
+        return stable_marker
+
     try:
         commits = repo.get_commits()
         return commits[0].sha[:12]
     except Exception:  # noqa: BLE001
-        repo_id = getattr(repo, "id", None)
-        pushed_at = getattr(repo, "pushed_at", None)
-        if isinstance(pushed_at, datetime):
-            pushed_marker = pushed_at.astimezone(timezone.utc).strftime("%Y%m%d%H%M%S")
-        elif pushed_at is None:
-            pushed_marker = "nopushedat"
-        else:
-            pushed_marker = str(pushed_at)
-
-        if repo_id is not None:
-            return f"repo-{repo_id}-{pushed_marker}"
-
-        repo_name = getattr(repo, "full_name", None) or getattr(repo, "name", None) or "unknown-repo"
-        return f"{repo_name}@{pushed_marker}"
+        return stable_marker
 def _safe_readme(repo: Any) -> str:
     try:
         return repo.get_readme().decoded_content.decode("utf-8", errors="ignore")[:3000]
