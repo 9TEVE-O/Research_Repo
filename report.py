@@ -1,8 +1,14 @@
 """Build a formatted Markdown daily research report."""
 
+import html
+
 
 def build_markdown_report(repos: list, date: str) -> str:
     """Return a formatted Markdown string for the daily research report.
+
+    All LLM-returned text fields (summary, reason) are HTML-escaped before
+    being embedded so that injected HTML/script cannot survive the subsequent
+    Markdown-to-HTML conversion in the email sender.
 
     Args:
         repos: List of repository dicts, each containing:
@@ -33,11 +39,16 @@ def build_markdown_report(repos: list, date: str) -> str:
     lines.append("---\n")
     for i, repo in enumerate(repos, start=1):
         anchor = repo["name"].lower().replace(" ", "-").replace("/", "")
+        # LLM-returned fields are treated as untrusted plaintext; escape any
+        # HTML characters before embedding them in the Markdown source so they
+        # cannot inject tags when the Markdown is rendered to HTML.
+        safe_summary = html.escape(repo["summary"])
+        safe_reason = html.escape(repo["reason"])
         lines.append(f'<a id="{anchor}"></a>\n')
         lines.append(f"## {i}. 🔗 [{repo['name']}]({repo['url']})\n")
         lines.append(f"**⭐ Relevance Score:** `{repo['relevance_score']}/100`\n")
-        lines.append(f"**💡 Why this repo?**\n{repo['reason']}\n")
-        lines.append(f"**📝 Summary**\n{repo['summary']}\n")
+        lines.append(f"**💡 Why this repo?**\n{safe_reason}\n")
+        lines.append(f"**📝 Summary**\n{safe_summary}\n")
         lines.append("---\n")
 
     # ── Footer ──────────────────────────────────────────────────────────────

@@ -4,21 +4,23 @@ Fetches candidate GitHub repositories, scores them with an LLM, selects the
 top 3, builds a Markdown report, sends it by email, and uploads it to a Gist.
 
 Environment variables required:
-    GITHUB_TOKEN   – GitHub personal access token (search + gist scopes)
-    OPENAI_API_KEY – OpenAI API key
-    SMTP_SERVER    – SMTP hostname
-    SMTP_PORT      – SMTP port (default 587)
-    SMTP_USER      – Sender email / SMTP login
-    SMTP_PASSWORD  – Sender SMTP password
-    REPORT_RECIPIENT – Email address to send the report to
+    GITHUB_TOKEN        – GitHub personal access token (search scope only)
+    GITHUB_GIST_TOKEN   – GitHub personal access token (gist scope only);
+                          falls back to GITHUB_TOKEN if not set
+    OPENAI_API_KEY      – OpenAI API key
+    SMTP_SERVER         – SMTP hostname
+    SMTP_PORT           – SMTP port (default 587)
+    SMTP_USER           – Sender email / SMTP login
+    SMTP_PASSWORD       – Sender SMTP password
+    REPORT_RECIPIENT    – Email address to send the report to
 
 Optional environment variables:
-    GIST_ID        – ID of the Gist to update; if unset, Gist upload is skipped
+    GIST_ID             – ID of the Gist to update; if unset, Gist upload is
+                          skipped
 """
 
 import logging
 import os
-import re
 from datetime import date
 
 import openai
@@ -47,9 +49,13 @@ LLM_SYSTEM_PROMPT = (
     "1. relevance_score: integer 0–100 for AI/LLM research relevance.\n"
     "2. summary: one-paragraph summary (2–4 sentences).\n"
     "3. reason: one sentence explaining the score.\n\n"
-    "Reply in this exact JSON format:\n"
+    "You MUST reply ONLY with a valid JSON object and no other text:\n"
     '{"relevance_score": <int>, "summary": "<str>", "reason": "<str>"}'
 )
+
+# Maximum character lengths for LLM-returned text fields.
+_MAX_SUMMARY_LEN = 1000
+_MAX_REASON_LEN = 500
 
 
 # ── Step helpers ─────────────────────────────────────────────────────────────
@@ -97,22 +103,30 @@ def score_repository(repo: dict, openai_client: openai.OpenAI) -> dict | None:
             ],
             temperature=0.2,
             max_tokens=300,
+            response_format={"type": "json_object"},
         )
         raw = response.choices[0].message.content.strip()
 
-        # Strip markdown code fences if present
-        raw = re.sub(r"^```(?:json)?\s*", "", raw)
-        raw = re.sub(r"\s*```$", "", raw)
-
         data = json.loads(raw)
+
+        # Validate types and ranges on all returned fields so that a
+        # prompt-injection payload cannot smuggle out-of-range scores or
+        # non-string content into the rest of the pipeline.
+        score = int(data["relevance_score"])
+        if not (0 <= score <= 100):
+            raise ValueError(f"relevance_score {score} outside allowed range 0–100")
+
+        summary = str(data["summary"])[:_MAX_SUMMARY_LEN]
+        reason = str(data["reason"])[:_MAX_REASON_LEN]
+
         return {
             "name": repo.get("full_name", ""),
             "url": repo.get("html_url", ""),
-            "relevance_score": int(data["relevance_score"]),
-            "summary": data["summary"],
-            "reason": data["reason"],
+            "relevance_score": score,
+            "summary": summary,
+            "reason": reason,
         }
-    except (json.JSONDecodeError, KeyError, openai.OpenAIError) as exc:
+    except (json.JSONDecodeError, KeyError, ValueError, openai.OpenAIError) as exc:
         logger.warning(
             "Failed to score repository '%s': %s",
             repo.get("full_name", "unknown"),
@@ -131,6 +145,10 @@ def run() -> None:
 
     # ── 1. Read configuration from environment ───────────────────────────────
     github_token = os.environ.get("GITHUB_TOKEN", "")
+    # Use a separate token for Gist operations (gist scope) so that the
+    # search token (public_repo scope) is not over-privileged.  Fall back
+    # to GITHUB_TOKEN only when GITHUB_GIST_TOKEN is not configured.
+    gist_token = os.environ.get("GITHUB_GIST_TOKEN") or github_token
     openai_api_key = os.environ.get("OPENAI_API_KEY", "")
     recipient = os.environ.get("REPORT_RECIPIENT", "")
     gist_id = os.environ.get("GIST_ID", "")
@@ -180,16 +198,18 @@ def run() -> None:
     # ── 6. Send email ─────────────────────────────────────────────────────────
     try:
         send_report_via_email(report_markdown, recipient)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.error("Email delivery failed: %s", exc)
+        raise
 
     # ── 7. Update Gist ────────────────────────────────────────────────────────
     if gist_id:
         try:
-            gist_url = upload_to_gist(report_markdown, gist_id, github_token)
+            gist_url = upload_to_gist(report_markdown, gist_id, gist_token)
             logger.info("Gist updated: %s", gist_url)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.error("Gist upload failed: %s", exc)
+            raise
     else:
         logger.warning("GIST_ID not set; skipping Gist upload.")
 
