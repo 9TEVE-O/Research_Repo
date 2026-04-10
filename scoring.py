@@ -61,14 +61,24 @@ def score_repository(
         raw = re.sub(r"\s*```$", "", raw)
 
         data = json.loads(raw)
+        score = int(data["relevance_score"])
+        if not 0 <= score <= 100:
+            raise ValueError("relevance_score must be between 0 and 100")
+
         return ScoredRepo(
             name=repo.get("full_name", ""),
             url=repo.get("html_url", ""),
-            relevance_score=int(data["relevance_score"]),
+            relevance_score=score,
             summary=data["summary"],
             reason=data["reason"],
         )
-    except (json.JSONDecodeError, KeyError, openai.OpenAIError) as exc:
+    except (
+        json.JSONDecodeError,
+        KeyError,
+        TypeError,
+        ValueError,
+        openai.OpenAIError,
+    ) as exc:
         logger.warning(
             "Failed to score repository '%s': %s",
             repo.get("full_name", "unknown"),
