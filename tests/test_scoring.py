@@ -71,13 +71,9 @@ class TestScoreRepository:
 class TestScoreAll:
     def test_skips_failed_repos(self):
         good_client = _mock_client(_make_llm_response())
-        bad_client = _mock_client("bad json")
 
         repos = [_raw_repo(full_name="a/good"), _raw_repo(full_name="b/bad")]
         # Use good client but bad JSON for second call
-        call_count = 0
-        original = good_client.chat.completions.create.side_effect
-
         responses = [
             MagicMock(choices=[MagicMock(message=MagicMock(content=_make_llm_response()))]),
             MagicMock(choices=[MagicMock(message=MagicMock(content="bad json"))]),
