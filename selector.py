@@ -2,30 +2,33 @@
 
 import logging
 
+from models import ScoredRepo
+
 logger = logging.getLogger(__name__)
 
 SCORE_THRESHOLD = 50
 
 
-def select_top_k(candidates: list, k: int = 3) -> list:
+def select_top_k(candidates: list[ScoredRepo], k: int = 3) -> list[ScoredRepo]:
     """Return up to k candidates sorted by relevance_score descending.
 
     Rules:
-    - Candidates with score <= 50 are excluded.
+    - Candidates with score <= SCORE_THRESHOLD are excluded.
     - If the number of qualifying candidates is less than k, return all
       that meet the threshold and emit a warning.
     - If no candidates meet the threshold, return an empty list and log
       a message.
 
     Args:
-        candidates: List of dicts each containing a ``relevance_score`` key.
+        candidates: List of :class:`~models.ScoredRepo` objects.
         k:          Maximum number of results to return (default 3).
 
     Returns:
-        A list of up to k candidate dicts sorted by score descending.
+        A list of up to k :class:`~models.ScoredRepo` objects sorted by
+        relevance_score descending.
     """
-    qualified = [c for c in candidates if c.get("relevance_score", 0) > SCORE_THRESHOLD]
-    qualified.sort(key=lambda c: c["relevance_score"], reverse=True)
+    qualified = [c for c in candidates if c.relevance_score > SCORE_THRESHOLD]
+    qualified.sort(key=lambda c: c.relevance_score, reverse=True)
 
     if not qualified:
         logger.warning(

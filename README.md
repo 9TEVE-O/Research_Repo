@@ -20,12 +20,19 @@ GitHub hosts 4M+ AI projects, with LLM research up 178% yearly. This agent achie
 
 ```
 Research_Repo/
-├── agent.py          # Main pipeline: fetch → score → select → report → send
-├── selector.py       # Filters and ranks repositories by relevance score
-├── report.py         # Builds the Markdown report from scored repositories
-├── email_sender.py   # Sends the report via SMTP
-├── gist_uploader.py  # Uploads the report to a GitHub Gist
-└── requirements.txt  # Python dependencies
+├── agent.py           # Thin CLI entry point
+├── pipeline.py        # Orchestrates the full run
+├── config.py          # Environment variable parsing + defaults
+├── models.py          # Typed dataclasses / schemas
+├── storage.py         # SQLite persistence
+├── github_client.py   # Candidate repository fetch
+├── scoring.py         # Deterministic + LLM scoring
+├── selector.py        # Top-k selection
+├── report.py          # Markdown report builder
+├── email_sender.py    # Email delivery via SMTP
+├── gist_uploader.py   # GitHub Gist delivery
+├── tests/             # Unit tests
+└── requirements.txt   # Python dependencies
 ```
 
 ---

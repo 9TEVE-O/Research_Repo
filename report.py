@@ -1,12 +1,13 @@
 """Build a formatted Markdown daily research report."""
 
+from models import ScoredRepo
 
-def build_markdown_report(repos: list, date: str) -> str:
+
+def build_markdown_report(repos: list[ScoredRepo], date: str) -> str:
     """Return a formatted Markdown string for the daily research report.
 
     Args:
-        repos: List of repository dicts, each containing:
-               name, url, relevance_score, summary, reason.
+        repos: List of :class:`~models.ScoredRepo` objects.
         date:  Report date string (e.g. "2024-01-15").
 
     Returns:
@@ -25,19 +26,19 @@ def build_markdown_report(repos: list, date: str) -> str:
     lines.append("---\n")
     lines.append("## 📋 Table of Contents\n")
     for i, repo in enumerate(repos, start=1):
-        anchor = repo["name"].lower().replace(" ", "-").replace("/", "")
-        lines.append(f"{i}. [{repo['name']}](#{anchor})")
+        anchor = repo.name.lower().replace(" ", "-").replace("/", "")
+        lines.append(f"{i}. [{repo.name}](#{anchor})")
     lines.append("")
 
     # ── Repository Sections ─────────────────────────────────────────────────
     lines.append("---\n")
     for i, repo in enumerate(repos, start=1):
-        anchor = repo["name"].lower().replace(" ", "-").replace("/", "")
+        anchor = repo.name.lower().replace(" ", "-").replace("/", "")
         lines.append(f'<a id="{anchor}"></a>\n')
-        lines.append(f"## {i}. 🔗 [{repo['name']}]({repo['url']})\n")
-        lines.append(f"**⭐ Relevance Score:** `{repo['relevance_score']}/100`\n")
-        lines.append(f"**💡 Why this repo?**\n{repo['reason']}\n")
-        lines.append(f"**📝 Summary**\n{repo['summary']}\n")
+        lines.append(f"## {i}. 🔗 [{repo.name}]({repo.url})\n")
+        lines.append(f"**⭐ Relevance Score:** `{repo.relevance_score}/100`\n")
+        lines.append(f"**💡 Why this repo?**\n{repo.reason}\n")
+        lines.append(f"**📝 Summary**\n{repo.summary}\n")
         lines.append("---\n")
 
     # ── Footer ──────────────────────────────────────────────────────────────
