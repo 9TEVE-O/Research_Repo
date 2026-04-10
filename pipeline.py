@@ -6,7 +6,7 @@ from datetime import date
 import openai
 import requests
 
-from config import Config, load_config
+from config import Config, load_config, missing_required_vars
 from github_client import fetch_candidates
 from report import build_markdown_report
 from scoring import score_all
@@ -31,7 +31,7 @@ def run(cfg: Config | None = None) -> None:
     if not cfg.is_valid():
         logger.error(
             "Missing required environment variable(s): %s",
-            ", ".join(cfg.missing_vars),
+            ", ".join(missing_required_vars()),
         )
         return
 

@@ -2,7 +2,7 @@
 
 import pytest
 
-from config import Config, load_config
+from config import Config, load_config, missing_required_vars
 
 
 REQUIRED_ENV = {
@@ -21,14 +21,12 @@ class TestLoadConfig:
             monkeypatch.setenv(k, v)
         cfg = load_config()
         assert cfg.is_valid()
-        assert cfg.missing_vars == []
 
-    def test_missing_vars_captured(self, monkeypatch):
+    def test_is_invalid_when_vars_missing(self, monkeypatch):
         for k in REQUIRED_ENV:
             monkeypatch.delenv(k, raising=False)
         cfg = load_config()
         assert not cfg.is_valid()
-        assert set(cfg.missing_vars) == set(REQUIRED_ENV)
 
     def test_defaults(self, monkeypatch):
         for k, v in REQUIRED_ENV.items():
@@ -52,3 +50,24 @@ class TestLoadConfig:
         assert cfg.top_k == 5
         assert cfg.gist_id == "abc123"
         assert cfg.llm_model == "gpt-4o"
+
+
+class TestMissingRequiredVars:
+    def test_returns_empty_when_all_set(self, monkeypatch):
+        for k, v in REQUIRED_ENV.items():
+            monkeypatch.setenv(k, v)
+        assert missing_required_vars() == []
+
+    def test_returns_missing_names(self, monkeypatch):
+        for k in REQUIRED_ENV:
+            monkeypatch.delenv(k, raising=False)
+        missing = missing_required_vars()
+        assert set(missing) == set(REQUIRED_ENV.keys())
+
+    def test_partial_missing(self, monkeypatch):
+        for k, v in REQUIRED_ENV.items():
+            monkeypatch.setenv(k, v)
+        monkeypatch.delenv("SMTP_PASSWORD", raising=False)
+        missing = missing_required_vars()
+        assert missing == ["SMTP_PASSWORD"]
+
