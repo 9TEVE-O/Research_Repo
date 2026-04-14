@@ -58,8 +58,12 @@ def run(cfg: Config | None = None) -> None:
     # ── 2. Score each candidate with the LLM ─────────────────────────────────
     scored = score_all(raw_candidates, openai_client, model=cfg.llm_model)
 
-    # ── 3. Select top-k ──────────────────────────────────────────────────────
-    top_repos = select_top_k(scored, k=cfg.top_k)
+    # ── 3. Select top-k using the configured relevance threshold ─────────────
+    top_repos = select_top_k(
+        scored,
+        k=cfg.top_k,
+        threshold=cfg.score_threshold,
+    )
 
     if not top_repos:
         logger.warning("No repositories passed the relevance threshold. Exiting.")
