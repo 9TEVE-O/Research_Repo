@@ -71,14 +71,22 @@ def save_repos(
         for r in repos
     ]
     with _get_connection(db_path) as conn:
-        conn.executemany(
+        conn.execute(
             """
-            INSERT INTO scored_repos
-                (report_date, name, url, relevance_score, summary, reason)
-            VALUES (?, ?, ?, ?, ?, ?)
+            DELETE FROM scored_repos
+            WHERE report_date = ?
             """,
-            rows,
+            (report_date,),
         )
+        if rows:
+            conn.executemany(
+                """
+                INSERT INTO scored_repos
+                    (report_date, name, url, relevance_score, summary, reason)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                rows,
+            )
         conn.commit()
     logger.info("Saved %d repo(s) for date %s.", len(repos), report_date)
 
