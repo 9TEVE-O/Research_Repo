@@ -18,7 +18,6 @@ Optional environment variables:
     SEARCH_QUERY     – GitHub search query (default: "topic:llm topic:research stars:>50")
     SEARCH_PER_PAGE  – Results per search page (default: 20)
     TOP_K            – Number of top repos to select (default: 3)
-    SCORE_THRESHOLD  – Minimum relevance score to include (default: 50)
     LLM_MODEL        – OpenAI model name (default: "gpt-4o-mini")
 """
 
