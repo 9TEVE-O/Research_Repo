@@ -167,15 +167,16 @@ def _latest_commit_hash(repo: Any) -> str:
     if stable_marker.endswith("-None"):
         stable_marker = stable_marker[:-5]
 
-    activity_at = getattr(repo, "pushed_at", None) or getattr(repo, "updated_at", None)
-    if activity_at is not None:
-        return stable_marker
-
     try:
         commits = repo.get_commits()
-        return commits[0].sha[:12]
+        latest_commit = commits[0]
+        sha = getattr(latest_commit, "sha", None)
+        if sha:
+            return sha[:12]
     except Exception:  # noqa: BLE001
-        return stable_marker
+        pass
+
+    return stable_marker
 def _safe_readme(repo: Any) -> str:
     try:
         return repo.get_readme().decoded_content.decode("utf-8", errors="ignore")[:3000]
