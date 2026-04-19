@@ -25,14 +25,18 @@ def run(cfg: Config | None = None) -> None:
         cfg: Pre-built :class:`~config.Config`.  When *None* the config is
              loaded from environment variables via :func:`~config.load_config`.
     """
+    loaded_from_env = cfg is None
     if cfg is None:
         cfg = load_config()
 
     if not cfg.is_valid():
-        logger.error(
-            "Missing required environment variable(s): %s",
-            ", ".join(missing_required_vars()),
-        )
+        if loaded_from_env:
+            logger.error(
+                "Missing required environment variable(s): %s",
+                ", ".join(missing_required_vars()),
+            )
+        else:
+            logger.error("Invalid configuration provided to run().")
         return
 
     today = date.today().isoformat()
