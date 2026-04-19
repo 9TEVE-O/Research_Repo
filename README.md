@@ -20,12 +20,15 @@ GitHub hosts 4M+ AI projects, with LLM research up 178% yearly. This agent achie
 
 ```
 Research_Repo/
-├── agent.py          # Main pipeline: fetch → score → select → report → send
-├── selector.py       # Filters and ranks repositories by relevance score
-├── report.py         # Builds the Markdown report from scored repositories
-├── email_sender.py   # Sends the report via SMTP
-├── gist_uploader.py  # Uploads the report to a GitHub Gist
-└── requirements.txt  # Python dependencies
+├── agent.py                           # Main pipeline: fetch → score → select → report → send
+├── selector.py                        # Filters and ranks repositories by relevance score
+├── report.py                          # Builds the Markdown report from scored repositories
+├── email_sender.py                    # Sends the report via SMTP
+├── gist_uploader.py                   # Uploads the report to a GitHub Gist
+├── policy_analysis.py                 # Enriches scored repos with privacy/terms analysis
+├── external/
+│   └── AI-Policy-Terms-Analyzer/      # Git submodule — upstream PolicyAnalyzer library
+└── requirements.txt                   # Python dependencies
 ```
 
 ---
@@ -42,10 +45,19 @@ Research_Repo/
 ### Installation
 
 ```bash
-git clone https://github.com/9TEVE-O/Research_Repo.git
+git clone --recurse-submodules https://github.com/9TEVE-O/Research_Repo.git
 cd Research_Repo
 pip install -r requirements.txt
 ```
+
+> **Note:** This repository vendors
+> [AI-Policy-Terms-Analyzer](https://github.com/9TEVE-O/AI-Policy-Terms-Analyzer)
+> as a git submodule under `external/`. If you cloned without
+> `--recurse-submodules`, fetch it now:
+>
+> ```bash
+> git submodule update --init --recursive
+> ```
 
 ### Environment Variables
 
@@ -88,6 +100,44 @@ python agent.py
 3. **Select** — The top 3 repositories above the relevance threshold are chosen.
 4. **Report** — A Markdown report is generated with a table of contents, repository details, and scores.
 5. **Deliver** — The report is sent via email and optionally uploaded to a GitHub Gist.
+
+---
+
+## Policy & Terms Analysis (new)
+
+Each scored repository is now enriched with a lightweight privacy / terms
+analysis powered by the vendored
+[AI-Policy-Terms-Analyzer](https://github.com/9TEVE-O/AI-Policy-Terms-Analyzer)
+library (included as a git submodule at `external/AI-Policy-Terms-Analyzer`).
+
+**How to initialize the submodule** (one-time, after clone):
+
+```bash
+git submodule update --init --recursive
+```
+
+**What it does.** After the LLM has scored each candidate, the agent calls
+`policy_analysis.annotate_with_policy()`, which for every scored repo:
+
+1. Fetches the repository's README from the GitHub API
+   (`/repos/{owner}/{repo}/readme` with `Accept: application/vnd.github.raw`).
+2. Runs the README text through `PolicyAnalyzer.analyze()`.
+3. Attaches a condensed `policy` dict to the repo with these fields:
+
+   | Field                  | Description                                          |
+   |------------------------|------------------------------------------------------|
+   | `summary`              | Plain-English privacy summary (≤ 500 chars)          |
+   | `privacy_concerns`     | Counts keyed by severity: `high` / `medium` / `low`  |
+   | `third_party_services` | Deduped list of mentioned third-party services (≤10) |
+   | `data_sharing`         | Entities data is shared with (≤10)                   |
+   | `technologies`         | Detected technologies/trackers (≤10)                 |
+   | `analyzed_chars`       | How many README chars were analyzed                  |
+   | `error`                | Populated only when analysis failed for this repo    |
+
+`report.py` renders these fields as a new **🛡️ Policy & Terms Analysis**
+subsection inside each repository block of the Markdown report. Failures for a
+single repo are isolated — the original pipeline output is unchanged whenever
+the analyzer cannot run.
 
 ---
 

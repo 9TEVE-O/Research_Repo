@@ -49,6 +49,51 @@ def build_markdown_report(repos: list, date: str) -> str:
         lines.append(f"**⭐ Relevance Score:** `{repo['relevance_score']}/100`\n")
         lines.append(f"**💡 Why this repo?**\n{safe_reason}\n")
         lines.append(f"**📝 Summary**\n{safe_summary}\n")
+
+        # ── Optional Policy & Terms Analysis subsection ──────────────────
+        policy = repo.get("policy")
+        if policy:
+            lines.append("**🛡️ Policy & Terms Analysis**\n")
+            error = policy.get("error")
+            if error:
+                lines.append(
+                    f"_Policy analysis unavailable: {html.escape(str(error))}_\n"
+                )
+            else:
+                summary_text = html.escape(policy.get("summary", "") or "")
+                if summary_text:
+                    lines.append(f"{summary_text}\n")
+
+                concerns = policy.get("privacy_concerns", {}) or {}
+                high = int(concerns.get("high", 0))
+                medium = int(concerns.get("medium", 0))
+                low = int(concerns.get("low", 0))
+                lines.append(
+                    f"**🔐 Privacy concerns:** High: {high} · "
+                    f"Medium: {medium} · Low: {low}\n"
+                )
+
+                tps = policy.get("third_party_services") or []
+                if tps:
+                    lines.append("**🔗 Third-party services:**")
+                    for item in tps[:5]:
+                        lines.append(f"- {html.escape(str(item))}")
+                    lines.append("")
+
+                sharing = policy.get("data_sharing") or []
+                if sharing:
+                    lines.append("**📤 Data sharing:**")
+                    for item in sharing[:5]:
+                        lines.append(f"- {html.escape(str(item))}")
+                    lines.append("")
+
+                techs = policy.get("technologies") or []
+                if techs:
+                    lines.append("**⚙️ Technologies detected:**")
+                    for item in techs[:5]:
+                        lines.append(f"- {html.escape(str(item))}")
+                    lines.append("")
+
         lines.append("---\n")
 
     # ── Footer ──────────────────────────────────────────────────────────────

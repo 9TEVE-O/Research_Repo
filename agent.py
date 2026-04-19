@@ -28,6 +28,7 @@ import requests
 
 from email_sender import send_report_via_email
 from gist_uploader import upload_to_gist
+from policy_analysis import annotate_with_policy
 from report import build_markdown_report
 from selector import select_top_k
 
@@ -183,6 +184,10 @@ def run() -> None:
             scored.append(result)
 
     logger.info("Successfully scored %d / %d candidates.", len(scored), len(raw_candidates))
+
+    # ── 3b. Annotate scored repos with policy/terms analysis ────────────────
+    scored = annotate_with_policy(scored, github_token)
+    logger.info("Annotated %d repositories with policy analysis.", len(scored))
 
     # ── 4. Select top 3 ──────────────────────────────────────────────────────
     top_repos = select_top_k(scored, k=3)
