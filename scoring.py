@@ -37,10 +37,15 @@ def score_repository(
         A :class:`ScoredRepo` on success, or ``None`` if the API call or
         JSON parsing fails.
     """
+    description = repo.get("description") or "N/A"
+    topics = repo.get("topics")
+    if not isinstance(topics, list):
+        topics = []
+
     user_message = (
         f"Repository: {repo.get('full_name', '')}\n"
-        f"Description: {repo.get('description', 'N/A')}\n"
-        f"Topics: {', '.join(repo.get('topics', []))}\n"
+        f"Description: {description}\n"
+        f"Topics: {', '.join(topics)}\n"
         f"Stars: {repo.get('stargazers_count', 0)}"
     )
 
