@@ -1,6 +1,8 @@
 """Daily research agent.
 
-Fetches candidate GitHub repositories, scores them with an LLM, selects the
+"""Daily research agent.
+
+Fetches candidate GitHub repositories, scores them with an LLM, selects the top 3, builds a Markdown report, sends it by email, and uploads it to a Gist.
 top 3, builds a Markdown report, sends it by email, and uploads it to a Gist.
 
 Environment variables required:
