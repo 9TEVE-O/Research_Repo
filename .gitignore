@@ -26,6 +26,38 @@ venv/
 *.swp
 *.swo
 
+<<<<<<< Updated upstream
+=======
+# Coverage reports
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+
+# Environment variable files
+.env.local
+*.env
+
+# IDE / editor settings
+.vscode/
+.idea/
+*.swp
+*.swo
+
+>>>>>>> Stashed changes
 # OS files
 .DS_Store
 Thumbs.db
