@@ -17,8 +17,13 @@ jobs:
             contents: read
 
         steps:
-            - name: Add superpowers-marketplace
-              run: copilot plugin marketplace add obra/superpowers-marketplace
+            - name: Check out repository
+              uses: actions/checkout@v4
 
-            - name: Install superpowers plugin
-              run: copilot plugin install superpowers@superpowers-marketplace
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.12"
+
+            - name: Install dependencies
+              run: pip install -r requirements.lock
