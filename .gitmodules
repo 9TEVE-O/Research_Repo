@@ -1,0 +1,3 @@
+[submodule "external/AI-Policy-Terms-Analyzer"]
+	path = external/AI-Policy-Terms-Analyzer
+	url = https://github.com/9TEVE-O/AI-Policy-Terms-Analyzer.git
