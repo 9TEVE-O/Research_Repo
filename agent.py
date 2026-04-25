@@ -1,7 +1,5 @@
-<<<<<<< HEAD
 """
 Research Agent
-==============
 Daily pipeline:
   1. Search GitHub for new / recently-updated AI-agent repos.
   2. Deduplicate against previously-seen repos (semantic + hash).
@@ -46,6 +44,7 @@ OPENAI_API_KEY: str = os.environ.get("OPENAI_API_KEY", "")
 SMTP_PASSWORD: str = os.environ.get("SMTP_PASSWORD", "")
 SMTP_HOST: str = os.environ.get("SMTP_HOST") or "smtp.gmail.com"
 _smtp_port: str = os.environ.get("SMTP_PORT", "587")
+SMTP_PORT: int = int(os.environ.get("SMTP_PORT", "587"))
 SMTP_PORT: int = int(_smtp_port) if _smtp_port.isdigit() else 587
 SMTP_USER: str = os.environ.get("SMTP_USER", "")
 EMAIL_TO: str = os.environ.get("EMAIL_TO", "")
@@ -169,17 +168,19 @@ def _latest_commit_hash(repo: Any) -> str:
     if stable_marker.endswith("-None"):
         stable_marker = stable_marker[:-5]
 
-    activity_at = getattr(repo, "pushed_at", None) or getattr(repo, "updated_at", None)
-    if activity_at is not None:
-        return stable_marker
-
     try:
         commits = repo.get_commits()
-        return commits[0].sha[:12]
+        latest_commit = commits[0]
+        sha = getattr(latest_commit, "sha", None)
+        if sha:
+            return sha[:12]
     except Exception:  # noqa: BLE001
         return stable_marker
 
 
+        pass
+
+    return stable_marker
 def _safe_readme(repo: Any) -> str:
     try:
         return repo.get_readme().decoded_content.decode("utf-8", errors="ignore")[:3000]
@@ -421,7 +422,6 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-=======
 """Daily research agent.
 
 Fetches candidate GitHub repositories, scores them with an LLM, selects the
@@ -647,4 +647,3 @@ def run() -> None:
 
 if __name__ == "__main__":
     run()
->>>>>>> main

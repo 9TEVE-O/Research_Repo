@@ -1,11 +1,9 @@
-<<<<<<< HEAD
 # Python byte-code cache
 __pycache__/
 *.py[cod]
 
 # Reports are generated at runtime; only the placeholder is tracked
 reports/latest.md
-=======
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -45,4 +43,3 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
->>>>>>> main
