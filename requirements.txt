@@ -1,7 +1,5 @@
 <<<<<<< Updated upstream
-=======
 pytest==8.3.5
->>>>>>> Stashed changes
 markdown>=3.5,<4
 nh3>=0.3,<1
 openai>=1.0,<3
@@ -10,5 +8,3 @@ requests>=2.31,<3
 <<<<<<< Updated upstream
 responses>=0.25,<1
 pytest>=8.0,<10
-=======
->>>>>>> Stashed changes

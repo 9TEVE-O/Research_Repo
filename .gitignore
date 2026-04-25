@@ -27,7 +27,6 @@ venv/
 *.swo
 
 <<<<<<< Updated upstream
-=======
 # Coverage reports
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -57,7 +56,6 @@ venv/
 *.swp
 *.swo
 
->>>>>>> Stashed changes
 # OS files
 .DS_Store
 Thumbs.db
