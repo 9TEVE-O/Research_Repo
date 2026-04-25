@@ -1,3 +1,5 @@
+<<<<<<< Updated upstream
+=======
 # Research_Repo
 
 > A daily AI research agent that automatically discovers, scores, and reports on the top LLM/AI GitHub repositories.
@@ -144,3 +146,4 @@ the analyzer cannot run.
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
+>>>>>>> Stashed changes
