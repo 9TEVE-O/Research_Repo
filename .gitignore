@@ -1,4 +1,4 @@
-# Byte-compiled / optimized / DLL files
+# Python byte-code cache
 __pycache__/
 *.py[cod]
 *$py.class
@@ -67,3 +67,6 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Reports are generated at runtime; only the placeholder is tracked
+reports/latest.md
