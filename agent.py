@@ -43,8 +43,10 @@ GITHUB_TOKEN: str = os.environ.get("GITHUB_TOKEN", "")
 OPENAI_API_KEY: str = os.environ.get("OPENAI_API_KEY", "")
 SMTP_PASSWORD: str = os.environ.get("SMTP_PASSWORD", "")
 SMTP_HOST: str = os.environ.get("SMTP_HOST") or "smtp.gmail.com"
+_smtp_port: str = os.environ.get("SMTP_PORT", "587")
 SMTP_PORT: int = int(os.environ.get("SMTP_PORT", "587"))
 SMTP_PORT: int = int(_smtp_port) if _smtp_port.isdigit() else 587
+SMTP_USER: str = os.environ.get("SMTP_USER", "")
 EMAIL_TO: str = os.environ.get("EMAIL_TO", "")
 
 STATE_PATH = Path("state/seen_repos.json")
@@ -173,6 +175,9 @@ def _latest_commit_hash(repo: Any) -> str:
         if sha:
             return sha[:12]
     except Exception:  # noqa: BLE001
+        return stable_marker
+
+
         pass
 
     return stable_marker
