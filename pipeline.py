@@ -8,6 +8,7 @@ import requests
 
 from config import Config, load_config, missing_required_vars
 from github_client import fetch_candidates
+from knowledge_graph import GraphRetriever, extract_graph_from_repos
 from report import build_markdown_report
 from scoring import score_all
 from selector import select_top_k
@@ -44,7 +45,7 @@ def run(cfg: Config | None = None) -> None:
 
     openai_client = openai.OpenAI(api_key=cfg.openai_api_key)
 
-    # ── 1. Fetch candidate repositories ──────────────────────────────────────
+    # ── 1. Fetch candidate repositories ───────────────────────────────────────────
     try:
         raw_candidates = fetch_candidates(
             cfg.github_token,
@@ -59,10 +60,10 @@ def run(cfg: Config | None = None) -> None:
         logger.warning("No candidates returned from GitHub search. Exiting.")
         return
 
-    # ── 2. Score each candidate with the LLM ─────────────────────────────────
+    # ── 2. Score each candidate with the LLM ─────────────────────────────────────
     scored = score_all(raw_candidates, openai_client, model=cfg.llm_model)
 
-    # ── 3. Select top-k using the configured relevance threshold ─────────────
+    # ── 3. Select top-k using the configured relevance threshold ─────────────────
     top_repos = select_top_k(
         scored,
         k=cfg.top_k,
@@ -73,20 +74,28 @@ def run(cfg: Config | None = None) -> None:
         logger.warning("No repositories passed the relevance threshold. Exiting.")
         return
 
-    # ── 4. Persist results ────────────────────────────────────────────────────
+    # ── 4. Build knowledge graph from selected repositories ─────────────────────
+    kg = extract_graph_from_repos(top_repos)
+    retriever = GraphRetriever(kg)
+    logger.info(
+        "Knowledge graph built. %s",
+        retriever.summarize().replace("\n", " | "),
+    )
+
+    # ── 5. Persist results ───────────────────────────────────────────────────────
     save_repos(top_repos, report_date=today)
 
-    # ── 5. Build Markdown report ──────────────────────────────────────────────
+    # ── 6. Build Markdown report ───────────────────────────────────────────────────
     report_markdown = build_markdown_report(top_repos, today)
     logger.info("Markdown report built (%d chars).", len(report_markdown))
 
-    # ── 6. Send email ─────────────────────────────────────────────────────────
+    # ── 7. Send email ─────────────────────────────────────────────────────────────
     try:
         send_report_via_email(report_markdown, cfg.report_recipient)
     except Exception as exc:  # noqa: BLE001
         logger.error("Email delivery failed: %s", exc)
 
-    # ── 7. Update Gist ────────────────────────────────────────────────────────
+    # ── 8. Update Gist ───────────────────────────────────────────────────────────
     if cfg.gist_id:
         try:
             gist_url = upload_to_gist(report_markdown, cfg.gist_id, cfg.github_token)
