@@ -29,6 +29,7 @@ class GraphRetriever:
         - Predicate-filtered triple search
         - k-hop context expansion for graph-based RAG
         - Path-based reasoning queries
+        - Bounded AI context blocks
     """
 
     def __init__(self, graph: KnowledgeGraph) -> None:
@@ -55,6 +56,68 @@ class GraphRetriever:
             neighbor_ids=neighbors,
             hop_distance=k,
         )
+
+    def build_ai_context(self, node_id: str, k: int = 2) -> str:
+        """Build a bounded plain-text context block for AI queries.
+
+        Constructs a structured string describing the node, its typed
+        relationships, and its k-hop neighborhood.  Suitable for injection
+        into an LLM prompt as grounded, curated context.
+
+        Example output::
+
+            Entity: LAB Safe Intake [workflow]
+            Summary: Privacy-first document intake workflow.
+            Properties:
+              status: active
+            Relationships:
+              LAB Safe Intake -> redacts -> PII (confidence=0.95)
+              LAB Safe Intake -> requires -> Human Review (confidence=1.00)
+            Nearby entities:
+              - PII [risk]
+              - Human Review [workflow]
+        """
+        result = self.context_for(node_id, k=k)
+        if result is None:
+            return f"No knowledge available about '{node_id}'."
+
+        node = result.node
+        lines: list[str] = [
+            f"Entity: {node.label} [{node.entity_type.value}]",
+            f"Summary: {node.summary or '(no summary)'}",
+        ]
+
+        if node.properties:
+            lines.append("Properties:")
+            for prop_key, prop_val in node.properties.items():
+                lines.append(f"  {prop_key}: {prop_val}")
+
+        if result.matching_triples:
+            lines.append("Relationships:")
+            for triple in result.matching_triples:
+                subj = self._graph.get_node(triple.subject_id)
+                obj = self._graph.get_node(triple.object_id)
+                subj_label = subj.label if subj else triple.subject_id
+                obj_label = obj.label if obj else triple.object_id
+                conf_str = ""
+                if triple.evidence:
+                    conf_str = f" (confidence={triple.evidence.confidence:.2f})"
+                lines.append(
+                    f"  {subj_label} -> {triple.predicate} -> {obj_label}{conf_str}"
+                )
+
+        if result.neighbor_ids:
+            neighbor_labels: list[str] = []
+            for nid in list(result.neighbor_ids)[:10]:
+                n = self._graph.get_node(nid)
+                if n:
+                    neighbor_labels.append(f"{n.label} [{n.entity_type.value}]")
+            if neighbor_labels:
+                lines.append("Nearby entities:")
+                for label in neighbor_labels:
+                    lines.append(f"  - {label}")
+
+        return "\n".join(lines)
 
     def answer_risk_query(self) -> list[tuple[KnowledgeNode, list[KnowledgeNode]]]:
         """Return (repo_node, [risk_nodes]) pairs for all flagged repos."""
