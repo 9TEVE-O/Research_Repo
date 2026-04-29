@@ -74,7 +74,7 @@ def test_internal_triples_counted_correctly() -> None:
     g = two_component_graph()
     clusters = find_connected_components(g)
     large = next(c for c in clusters if c.size == 3)
-    assert large.internal_triple_count == 2
+    assert len(large.internal_triples) == 2
 
 
 def test_empty_graph_returns_no_clusters() -> None:
