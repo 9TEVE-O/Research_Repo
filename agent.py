@@ -1,23 +1,20 @@
 """Daily research agent.
 
-"""Daily research agent.
-
 Fetches candidate GitHub repositories, scores them with an LLM, selects the top 3, builds a Markdown report, sends it by email, and uploads it to a Gist.
-top 3, builds a Markdown report, sends it by email, and uploads it to a Gist.
 
 Environment variables required:
-    GITHUB_TOKEN        – GitHub personal access token (search scope only)
-    GITHUB_GIST_TOKEN   – GitHub personal access token (gist scope only);
+    GITHUB_TOKEN        - GitHub personal access token (search scope only)
+    GITHUB_GIST_TOKEN   - GitHub personal access token (gist scope only);
                           falls back to GITHUB_TOKEN if not set
-    OPENAI_API_KEY      – OpenAI API key
-    SMTP_SERVER         – SMTP hostname
-    SMTP_PORT           – SMTP port (default 587)
-    SMTP_USER           – Sender email / SMTP login
-    SMTP_PASSWORD       – Sender SMTP password
-    REPORT_RECIPIENT    – Email address to send the report to
+    OPENAI_API_KEY      - OpenAI API key
+    SMTP_SERVER         - SMTP hostname
+    SMTP_PORT           - SMTP port (default 587)
+    SMTP_USER           - Sender email / SMTP login
+    SMTP_PASSWORD       - Sender SMTP password
+    REPORT_RECIPIENT    - Email address to send the report to
 
 Optional environment variables:
-    GIST_ID             – ID of the Gist to update; if unset, Gist upload is
+    GIST_ID             - ID of the Gist to update; if unset, Gist upload is
                           skipped
 """
 
@@ -49,8 +46,8 @@ SEARCH_PER_PAGE = 20
 LLM_SYSTEM_PROMPT = (
     "You are a research assistant.  Given a GitHub repository's name, "
     "description and topics, respond with:\n"
-    "1. relevance_score: integer 0–100 for AI/LLM research relevance.\n"
-    "2. summary: one-paragraph summary (2–4 sentences).\n"
+    "1. relevance_score: integer 0-100 for AI/LLM research relevance.\n"
+    "2. summary: one-paragraph summary (2-4 sentences).\n"
     "3. reason: one sentence explaining the score.\n\n"
     "You MUST reply ONLY with a valid JSON object and no other text:\n"
     '{"relevance_score": <int>, "summary": "<str>", "reason": "<str>"}'
@@ -117,7 +114,7 @@ def score_repository(repo: dict, openai_client: openai.OpenAI) -> dict | None:
         # non-string content into the rest of the pipeline.
         score = int(data["relevance_score"])
         if not (0 <= score <= 100):
-            raise ValueError(f"relevance_score {score} outside allowed range 0–100")
+            raise ValueError(f"relevance_score {score} outside allowed range 0-100")
 
         summary = str(data["summary"])[:_MAX_SUMMARY_LEN]
         reason = str(data["reason"])[:_MAX_REASON_LEN]

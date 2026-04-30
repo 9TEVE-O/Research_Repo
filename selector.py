@@ -21,20 +21,20 @@ def select_top_k(candidates: list, k: int = 3) -> list:
       a message.
 
     Args:
-        candidates: List of dicts each containing a ``relevance_score`` key.
+        candidates: List of ScoredRepo objects each containing a ``relevance_score`` attribute.
         k:          Maximum number of results to return (default 3).
 
     Returns:
-        A list of up to k candidate dicts sorted by score descending.
+        A list of up to k ScoredRepo objects sorted by score descending.
     """
     valid = []
     for c in candidates:
-        score = c.get("relevance_score", 0)
+        score = c.relevance_score
         if not (_SCORE_MIN <= score <= _SCORE_MAX):
             logger.warning(
                 "Discarding candidate '%s': relevance_score %s is outside "
                 "the valid range %d–%d.",
-                c.get("name", "unknown"),
+                getattr(c, 'name', 'unknown'),
                 score,
                 _SCORE_MIN,
                 _SCORE_MAX,
@@ -42,8 +42,8 @@ def select_top_k(candidates: list, k: int = 3) -> list:
             continue
         valid.append(c)
 
-    qualified = [c for c in valid if c.get("relevance_score", 0) > SCORE_THRESHOLD]
-    qualified.sort(key=lambda c: c["relevance_score"], reverse=True)
+    qualified = [c for c in valid if c.relevance_score > SCORE_THRESHOLD]
+    qualified.sort(key=lambda c: c.relevance_score, reverse=True)
 
     if not qualified:
         logger.warning(
