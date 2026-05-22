@@ -199,6 +199,11 @@ def run() -> None:
     report_markdown = build_markdown_report(top_repos, today)
     logger.info("Markdown report built (%d chars).", len(report_markdown))
 
+    import pathlib
+    pathlib.Path("reports").mkdir(exist_ok=True)
+    pathlib.Path("reports/latest.md").write_text(report_markdown, encoding="utf-8")
+    logger.info("Report written to reports/latest.md.")
+
     # ── 6. Send email ─────────────────────────────────────────────────────────
     try:
         send_report_via_email(report_markdown, recipient)
