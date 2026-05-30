@@ -33,7 +33,7 @@ The principles underlying modern GitHub workflows owe much to the DevOps movemen
 
 ### 2.2 GitHub as a Research Subject
 
-GitHub has attracted substantial scholarly attention as both a platform and a social phenomenon. Kalliamvakou et al. (2014) conducted a large-scale empirical study of GitHub repositories and cautioned that the platform's social features — stars, forks, followers — do not straightforwardly map to software quality or activity, identifying several perils in using GitHub data for research. Gousios et al. (2014) examined the pull request model specifically, finding that integrators balance quality signals, relationship signals, and process compliance when deciding whether to merge contributions. Ray et al. (2014) analyzed the relationship between programming language choice and defect density across a large GitHub corpus, providing one of the field's most cited empirical comparisons of language ecosystems. More recently, Mens et al. (2023) examined the evolution of software ecosystems on GitHub, highlighting the increasing interdependence of packages and the cascading risks that dependency updates introduce.
+Ray et al. (2014) analyzed the relationship between programming language choice and defect density across a large GitHub corpus, providing one of the field's most cited empirical comparisons of language ecosystems, though subsequent reproduction work by Berger et al. (2019) contested these findings by identifying significant methodological limitations. More recently, Mens et al. (2023) examined the evolution of software ecosystems on GitHub, highlighting the increasing interdependence of packages and the cascading risks that dependency updates introduce.
 
 ### 2.3 AI-Assisted Development
 
