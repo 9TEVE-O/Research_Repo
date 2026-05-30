@@ -293,7 +293,7 @@ Potvin, R., & Levenberg, J. (2016). Why Google stores billions of lines of code 
 
 Preston-Werner, T. (2013). *Semantic versioning 2.0.0*. https://semver.org/
 
-Ray, B., Posnett, D., Filkov, V., & Devanbu, P. (2014). A large scale study of programming languages and code quality in GitHub. In *Proceedings of the 22nd ACM SIGSOFT International Symposium on Foundations of Software Engineering* (pp. 155–165). ACM. https://doi.org/10.1145/2635868.2635922
+Ray, B., Posnett, D., Filkov, V., & Devanbu, P. (2014). A large-scale study of programming languages and code quality in GitHub. In *Proceedings of the 22nd ACM SIGSOFT International Symposium on Foundations of Software Engineering* (pp. 155–165). ACM. https://doi.org/10.1145/2635868.2635922
 
 Storey, M. A., Zagalsky, A., Figueira Filho, F., Singer, L., & German, D. M. (2017). How social and communication channels shape and challenge a participatory culture in software development. *IEEE Transactions on Software Engineering, 43*(2), 185–204. https://doi.org/10.1109/TSE.2016.2584053
 
