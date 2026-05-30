@@ -53,7 +53,7 @@ The monorepo pattern, employed at scale by companies including Google, Meta, and
 
 The polyrepo pattern, by contrast, enforces stronger boundaries between services and packages, which can be advantageous for teams that practice independent deployment of microservices or that need to enforce different access controls for different components. In the context of AI-assisted development, polyrepos can limit the blast radius of an AI agent operating with write access: a misconfigured or misbehaving agent can only affect the repository to which it has been granted credentials.
 
-Neither pattern dominates unconditionally. Teams maintaining consumer mobile applications alongside a shared backend may find a monorepo approach valuable for coordinating API contract changes, while teams operating fully independent microservices with separate on-call responsibilities may prefer the isolation that polyrepos provide. The emerging hybrid pattern — sometimes called a "modular monorepo" — partitions a single repository into clearly bounded modules with enforced internal APIs, seeking to capture the cross-cutting visibility benefits of the monorepo while preserving the conceptual separation of the polyrepo (Lopes et al., 2018).
+The emerging hybrid pattern — sometimes called a "modular monorepo" — partitions a single repository into clearly bounded modules with enforced internal APIs, seeking to capture the cross-cutting visibility benefits of the monorepo while preserving the conceptual separation of the polyrepo.
 
 ### 3.2 Naming Conventions and Repository Hygiene
 
