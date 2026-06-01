@@ -11,6 +11,10 @@ const TOPICS = [
   { id: "machinebuilding", label: "Machine Building" },
 ];
 
+function safeUrl(url) {
+  return typeof url === 'string' && /^https:\/\//i.test(url) ? url : null;
+}
+
 export default function App() {
   const [selectedTopics, setSelectedTopics] = useState([]);
   const [papers, setPapers] = useState([]);
@@ -42,21 +46,14 @@ export default function App() {
           body: JSON.stringify({ topicLabel: topic.label }),
         });
 
-        if (!response.ok) throw new Error(`API error ${response.status}`);
-        const data = await response.json();
-
-        const textBlocks = data.content?.filter(b => b.type === "text") || [];
-        const rawText = textBlocks.map(b => b.text).join("");
-
-        let parsed = [];
-        try {
-          const match = rawText.match(/\[[\s\S]*\]/);
-          if (match) parsed = JSON.parse(match[0]);
-        } catch {
-          try { parsed = JSON.parse(rawText); } catch { parsed = []; }
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.error || `HTTP ${response.status}`);
         }
 
-        const tagged = parsed.map((p, i) => ({
+        const { papers: fetched = [] } = await response.json();
+
+        const tagged = fetched.map((p, i) => ({
           ...p,
           id: `${topic.id}-${i}`,
           topic: topic.id,
@@ -89,7 +86,6 @@ export default function App() {
       fontFamily: "'Courier New', 'Lucida Console', monospace",
       padding: "0",
     }}>
-      {/* Header */}
       <div style={{
         borderBottom: "1px solid #2a2a3a",
         padding: "28px 40px 24px",
@@ -103,7 +99,7 @@ export default function App() {
             <span style={{ color: "#4a9eff", fontSize: 11, letterSpacing: 4, textTransform: "uppercase" }}>
               ◈ RESEARCH_TERMINAL
             </span>
-            <span style={{ color: "#444", fontSize: 10 }}>v2.0 // academic intelligence layer</span>
+            <span style={{ color: "#444", fontSize: 10 }}>v2.1 // academic intelligence layer</span>
           </div>
           <h1 style={{ margin: 0, fontSize: 26, fontWeight: "normal", color: "#f0ede8", letterSpacing: 1 }}>
             Academic Paper Intelligence
@@ -111,11 +107,13 @@ export default function App() {
           <p style={{ margin: "6px 0 0", color: "#666", fontSize: 12, letterSpacing: 0.5 }}>
             arXiv · MIT · Harvard · IEEE · ACM — live retrieval
           </p>
+          <p style={{ margin: "6px 0 0", color: "#5a4a2a", fontSize: 10, letterSpacing: 0.3 }}>
+            ⚠ AI-generated results — always verify papers independently before citing
+          </p>
         </div>
       </div>
 
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 40px" }}>
-        {/* Topic selector */}
         <div style={{ marginBottom: 32 }}>
           <div style={{ fontSize: 10, color: "#555", letterSpacing: 3, textTransform: "uppercase", marginBottom: 14 }}>
             ▸ SELECT RESEARCH DOMAINS
@@ -146,7 +144,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* Fetch button */}
         <div style={{ marginBottom: 36 }}>
           <button
             onClick={fetchPapers}
@@ -170,16 +167,12 @@ export default function App() {
             }
           </button>
           {selectedTopics.length === 0 && (
-            <span style={{ marginLeft: 16, color: "#444", fontSize: 11 }}>
-              select at least one domain
-            </span>
+            <span style={{ marginLeft: 16, color: "#444", fontSize: 11 }}>select at least one domain</span>
           )}
         </div>
 
-        {/* Results */}
         {papers.length > 0 && (
           <>
-            {/* Filter bar */}
             <div style={{ marginBottom: 24, display: "flex", gap: 8, flexWrap: "wrap" }}>
               <span style={{ fontSize: 10, color: "#555", letterSpacing: 3, textTransform: "uppercase", alignSelf: "center", marginRight: 4 }}>
                 FILTER:
@@ -221,7 +214,6 @@ export default function App() {
               })}
             </div>
 
-            {/* Paper cards */}
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               {filtered.map((paper, i) => (
                 <PaperCard key={paper.id || i} paper={paper} index={i} />
@@ -230,7 +222,6 @@ export default function App() {
           </>
         )}
 
-        {/* Empty state */}
         {!loading && papers.length === 0 && selectedTopics.length > 0 && (
           <div style={{ color: "#444", fontSize: 13, padding: "40px 0", textAlign: "center" }}>
             Press FETCH PAPERS to retrieve results
@@ -267,6 +258,8 @@ function PaperCard({ paper, index }) {
 
   const src = paper.source?.split("/")?.[0]?.trim() || paper.source || "—";
   const color = sourceColor[src] || "#666";
+  const hasEvidence = paper.evidence_map?.length > 0;
+  const href = safeUrl(paper.url);
 
   return (
     <div
@@ -285,7 +278,7 @@ function PaperCard({ paper, index }) {
           {String(index + 1).padStart(2, "0")}
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 6 }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 6, flexWrap: "wrap" }}>
             <span style={{
               color,
               fontSize: 10,
@@ -304,16 +297,27 @@ function PaperCard({ paper, index }) {
             {paper.date && (
               <span style={{ color: "#444", fontSize: 10 }}>{paper.date}</span>
             )}
+            <span style={{
+              fontSize: 9,
+              color: hasEvidence ? "#4a6a3a" : "#4a3a2a",
+              border: `1px solid ${hasEvidence ? "#2a4a1a" : "#3a2a1a"}`,
+              padding: "1px 6px",
+              letterSpacing: 0.5,
+            }}>
+              {hasEvidence ? `● ${paper.evidence_map.length} source${paper.evidence_map.length !== 1 ? 's' : ''}` : '○ unverified'}
+            </span>
             <span style={{ marginLeft: "auto", color: "#333", fontSize: 10 }}>
               {expanded ? "▲" : "▼"}
             </span>
           </div>
+
           <div style={{ fontSize: 13, color: "#d8d5d0", lineHeight: 1.5, marginBottom: 4 }}>
             {paper.title || "Untitled"}
           </div>
           {paper.authors && (
             <div style={{ fontSize: 11, color: "#555" }}>{paper.authors}</div>
           )}
+
           {expanded && (
             <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #1e1e2e" }}>
               {paper.abstract && (
@@ -321,6 +325,34 @@ function PaperCard({ paper, index }) {
                   {paper.abstract}
                 </p>
               )}
+
+              {hasEvidence && (
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 9, color: "#4a6a3a", letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>
+                    SEARCH EVIDENCE
+                  </div>
+                  {paper.evidence_map.map((snippet, i) => (
+                    <div key={i} style={{
+                      fontSize: 11,
+                      color: "#667",
+                      borderLeft: "2px solid #2a4a1a",
+                      paddingLeft: 10,
+                      marginBottom: 6,
+                      lineHeight: 1.5,
+                      fontStyle: "italic",
+                    }}>
+                      "{snippet}"
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {!hasEvidence && (
+                <div style={{ fontSize: 10, color: "#5a3a1a", marginBottom: 12, padding: "6px 10px", border: "1px solid #3a2a1a", background: "#1a1008" }}>
+                  ⚠ No web search results confirmed this paper — verify independently before use
+                </div>
+              )}
+
               {paper.tags?.length > 0 && (
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
                   {paper.tags.map((tag, i) => (
@@ -335,9 +367,10 @@ function PaperCard({ paper, index }) {
                   ))}
                 </div>
               )}
-              {paper.url && (
+
+              {href && (
                 <a
-                  href={paper.url}
+                  href={href}
                   target="_blank"
                   rel="noreferrer"
                   onClick={e => e.stopPropagation()}
@@ -348,7 +381,7 @@ function PaperCard({ paper, index }) {
                     borderBottom: "1px solid #4a9eff44",
                   }}
                 >
-                  ↗ {paper.url}
+                  ↗ {href}
                 </a>
               )}
             </div>
