@@ -63,6 +63,22 @@ function sanitizePapers(papers) {
   }));
 }
 
+// ── In-memory cache ───────────────────────────────────────────────
+const CACHE_TTL_MS = 10 * 60 * 1000;
+const paperCache = new Map();
+
+function getCached(key) {
+  const entry = paperCache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) { paperCache.delete(key); return null; }
+  return entry.papers;
+}
+
+function setCache(key, papers) {
+  paperCache.set(key, { papers, expiresAt: Date.now() + CACHE_TTL_MS });
+}
+// ─────────────────────────────────────────────────────────────────
+
 app.post('/api/papers', async (req, res) => {
   const { topicLabel } = req.body;
   if (!topicLabel || typeof topicLabel !== 'string') {
@@ -70,6 +86,11 @@ app.post('/api/papers', async (req, res) => {
   }
 
   const safeLabel = sanitizeTopicLabel(topicLabel);
+
+  const cached = getCached(safeLabel);
+  if (cached) {
+    return res.json({ papers: cached, fromCache: true });
+  }
 
   try {
     const response = await client.messages.create({
@@ -96,7 +117,9 @@ app.post('/api/papers', async (req, res) => {
       try { papers = JSON.parse(rawText); } catch { papers = []; }
     }
 
-    res.json({ papers: sanitizePapers(papers) });
+    const sanitized = sanitizePapers(papers);
+    setCache(safeLabel, sanitized);
+    res.json({ papers: sanitized, fromCache: false });
   } catch (err) {
     console.error(`Error fetching papers for "${safeLabel}":`, err.message);
     res.status(500).json({ error: 'Failed to fetch papers. Please try again.' });

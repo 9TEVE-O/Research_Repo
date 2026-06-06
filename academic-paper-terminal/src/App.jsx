@@ -15,13 +15,46 @@ function safeUrl(url) {
   return typeof url === 'string' && /^https:\/\//i.test(url) ? url : null;
 }
 
+function normaliseTitle(title) {
+  return (title || '')
+    .toLowerCase()
+    .replace(/[^\w\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function generateBibtex(papers) {
+  return papers.map(paper => {
+    const firstAuthor = (paper.authors || '').split(',')[0].trim();
+    const lastName = firstAuthor.split(' ').pop() || 'Unknown';
+    const year = (paper.date || '').match(/\d{4}/)?.[0] || 'XXXX';
+    const key = `${lastName}${year}`;
+    const esc = s => (s || '').replace(/[{}\\]/g, '\\$&');
+    const note = [
+      paper.abstract ? `Abstract: ${paper.abstract}` : '',
+      paper.source   ? `Source: ${paper.source}`     : '',
+    ].filter(Boolean).join('. ');
+    return [
+      `@misc{${key},`,
+      `  title  = {${esc(paper.title)}},`,
+      `  author = {${esc(paper.authors)}},`,
+      `  year   = {${year}},`,
+      paper.url ? `  url    = {${paper.url}},` : null,
+      `  note   = {${esc(note)}}`,
+      `}`,
+    ].filter(line => line !== null).join('\n');
+  }).join('\n\n');
+}
+
 export default function App() {
   const [selectedTopics, setSelectedTopics] = useState([]);
   const [papers, setPapers] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [topicStatus, setTopicStatus] = useState({});
+  const [topicErrors, setTopicErrors] = useState({});
   const [activeFilter, setActiveFilter] = useState("all");
   const [searchedTopics, setSearchedTopics] = useState([]);
+
+  const loading = Object.values(topicStatus).some(s => s === 'loading');
 
   const toggleTopic = (id) => {
     setSelectedTopics(prev =>
@@ -31,14 +64,18 @@ export default function App() {
 
   const fetchPapers = useCallback(async () => {
     if (selectedTopics.length === 0) return;
-    setLoading(true);
-    setError(null);
+
+    const initialStatus = {};
+    selectedTopics.forEach(id => { initialStatus[id] = 'idle'; });
+    setTopicStatus(initialStatus);
+    setTopicErrors({});
     setPapers([]);
     setSearchedTopics([...selectedTopics]);
 
     const topicsToFetch = TOPICS.filter(t => selectedTopics.includes(t.id));
 
     for (const topic of topicsToFetch) {
+      setTopicStatus(prev => ({ ...prev, [topic.id]: 'loading' }));
       try {
         const response = await fetch("/api/papers", {
           method: "POST",
@@ -52,21 +89,31 @@ export default function App() {
         }
 
         const { papers: fetched = [] } = await response.json();
-
         const tagged = fetched.map((p, i) => ({
           ...p,
           id: `${topic.id}-${i}`,
           topic: topic.id,
           topicLabel: topic.label,
         }));
-        setPapers(prev => [...prev, ...tagged]);
+
+        setPapers(prev => {
+          const seen = new Set(prev.map(p => normaliseTitle(p.title)));
+          const unique = tagged.filter(p => {
+            const norm = normaliseTitle(p.title);
+            if (seen.has(norm)) return false;
+            seen.add(norm);
+            return true;
+          });
+          return [...prev, ...unique];
+        });
+
+        setTopicStatus(prev => ({ ...prev, [topic.id]: 'done' }));
       } catch (err) {
         console.error(`Failed to fetch ${topic.label}:`, err);
-        setError(err.message);
+        setTopicStatus(prev => ({ ...prev, [topic.id]: 'error' }));
+        setTopicErrors(prev => ({ ...prev, [topic.id]: err.message }));
       }
     }
-
-    setLoading(false);
   }, [selectedTopics]);
 
   const filtered = activeFilter === "all"
@@ -77,6 +124,17 @@ export default function App() {
     acc[p.topic] = (acc[p.topic] || 0) + 1;
     return acc;
   }, {});
+
+  const exportBibtex = useCallback(() => {
+    const bib = generateBibtex(filtered);
+    const blob = new Blob([bib], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'papers.bib';
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [filtered]);
 
   return (
     <div style={{
@@ -99,7 +157,7 @@ export default function App() {
             <span style={{ color: "#4a9eff", fontSize: 11, letterSpacing: 4, textTransform: "uppercase" }}>
               ◈ RESEARCH_TERMINAL
             </span>
-            <span style={{ color: "#444", fontSize: 10 }}>v2.1 // academic intelligence layer</span>
+            <span style={{ color: "#444", fontSize: 10 }}>v2.2 // academic intelligence layer</span>
           </div>
           <h1 style={{ margin: 0, fontSize: 26, fontWeight: "normal", color: "#f0ede8", letterSpacing: 1 }}>
             Academic Paper Intelligence
@@ -121,6 +179,16 @@ export default function App() {
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
             {TOPICS.map(topic => {
               const active = selectedTopics.includes(topic.id);
+              const status = topicStatus[topic.id];
+              const icon = status === 'loading' ? '⟳'
+                         : status === 'done'    ? '✓'
+                         : status === 'error'   ? '✕'
+                         : active               ? '■'
+                                                : '□';
+              const iconColor = status === 'done'    ? '#4a9a4a'
+                              : status === 'error'   ? '#ff6b6b'
+                              : status === 'loading' ? '#f5a623'
+                              : undefined;
               return (
                 <button
                   key={topic.id}
@@ -137,7 +205,8 @@ export default function App() {
                     fontFamily: "inherit",
                   }}
                 >
-                  {active ? "■" : "□"} {topic.label}
+                  <span style={{ color: iconColor }}>{icon}</span>
+                  {' '}{topic.label}
                 </button>
               );
             })}
@@ -173,7 +242,7 @@ export default function App() {
 
         {papers.length > 0 && (
           <>
-            <div style={{ marginBottom: 24, display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <div style={{ marginBottom: 12, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               <span style={{ fontSize: 10, color: "#555", letterSpacing: 3, textTransform: "uppercase", alignSelf: "center", marginRight: 4 }}>
                 FILTER:
               </span>
@@ -212,9 +281,26 @@ export default function App() {
                   </button>
                 );
               })}
+              <button
+                onClick={exportBibtex}
+                style={{
+                  marginLeft: "auto",
+                  padding: "4px 16px",
+                  background: "#0a1a0a",
+                  border: "1px solid #2a6a2a",
+                  color: "#4a9a4a",
+                  cursor: "pointer",
+                  fontSize: 11,
+                  letterSpacing: 2,
+                  textTransform: "uppercase",
+                  fontFamily: "inherit",
+                }}
+              >
+                ↓ EXPORT .BIB ({filtered.length})
+              </button>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 12 }}>
               {filtered.map((paper, i) => (
                 <PaperCard key={paper.id || i} paper={paper} index={i} />
               ))}
@@ -228,18 +314,21 @@ export default function App() {
           </div>
         )}
 
-        {error && (
-          <div style={{
-            padding: "16px 20px",
-            border: "1px solid #5a1a1a",
-            background: "#1a0a0a",
-            color: "#ff6b6b",
-            fontSize: 12,
-            marginTop: 20,
-          }}>
-            ✕ ERROR: {error}
-          </div>
-        )}
+        {Object.entries(topicErrors).map(([topicId, msg]) => {
+          const topic = TOPICS.find(t => t.id === topicId);
+          return (
+            <div key={topicId} style={{
+              padding: "10px 16px",
+              border: "1px solid #5a1a1a",
+              background: "#1a0a0a",
+              color: "#ff6b6b",
+              fontSize: 11,
+              marginTop: 8,
+            }}>
+              ✕ {topic?.label ?? topicId}: {msg}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
