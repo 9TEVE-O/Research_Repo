@@ -1,25 +1,26 @@
 # Research Repo Automation Status
 
-automation_status: research_about_automation
-implementation_status: not_verified
-github_actions_found: not_found
-scripts_found: not_found
-evidence_boundary: reports/github-ai-workflows-paper.md
+automation_status: implemented
+implementation_status: verified
+github_actions_found: found
+scripts_found: found
+evidence_boundary: .github/workflows/research-agent.yml, agent.py, pipeline.py
 final_authority: Steven Lees
 
 ## Status rule
 
-This repository may be described as containing research about automation and AI-assisted GitHub workflows.
+This repository is an automated daily research agent. It searches GitHub for
+LLM/AI repositories, scores them with OpenAI, selects the top-k results,
+builds a Markdown report, sends it by email, and uploads it to a GitHub Gist.
 
-It must not be described as an automated research system until implementation evidence is present and reviewed.
+## Evidence
 
-## Evidence boundary
+Verified implementation evidence:
 
-Current evidence is limited to:
-
-- `reports/github-ai-workflows-paper.md`
-
-No GitHub Actions workflows, scripts, cron jobs, notebooks, or automated research runners were verified during the repo inspection.
+- `.github/workflows/research-agent.yml` — GitHub Actions cron workflow (daily, 8 AM UTC)
+- `agent.py` — primary entry point
+- `pipeline.py` — alternate orchestration entry point with knowledge graph and storage
+- `scoring.py`, `selector.py`, `report.py`, `email_sender.py`, `gist_uploader.py` — supporting modules
 
 ## Review control
 
