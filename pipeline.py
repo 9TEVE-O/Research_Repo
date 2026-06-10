@@ -9,6 +9,8 @@ import requests
 from config import Config, load_config, missing_required_vars
 from github_client import fetch_candidates
 from knowledge_graph import GraphRetriever, extract_graph_from_repos
+from models import ScoredRepo
+from policy_analysis import annotate_with_policy
 from report import build_markdown_report
 from scoring import score_all
 from selector import select_top_k
@@ -45,7 +47,7 @@ def run(cfg: Config | None = None) -> None:
 
     openai_client = openai.OpenAI(api_key=cfg.openai_api_key)
 
-    # ── 1. Fetch candidate repositories ───────────────────────────────────────────
+    # ── 1. Fetch candidate repositories ──────────────────────────────────────────────
     try:
         raw_candidates = fetch_candidates(
             cfg.github_token,
@@ -60,10 +62,19 @@ def run(cfg: Config | None = None) -> None:
         logger.warning("No candidates returned from GitHub search. Exiting.")
         return
 
-    # ── 2. Score each candidate with the LLM ─────────────────────────────────────
+    # ── 2. Score each candidate with the LLM ──────────────────────────────────────────────
     scored = score_all(raw_candidates, openai_client, model=cfg.llm_model)
 
-    # ── 3. Select top-k using the configured relevance threshold ─────────────────
+    # ── 2b. Annotate with policy / terms analysis ──────────────────────────────────────
+    # annotate_with_policy expects plain dicts; convert to dicts, annotate,
+    # then re-hydrate back into ScoredRepo objects preserving the policy field.
+    scored_dicts = annotate_with_policy(
+        [r.to_dict() for r in scored], cfg.github_token
+    )
+    scored = [ScoredRepo.from_dict(d) for d in scored_dicts]
+    logger.info("Annotated %d repositories with policy analysis.", len(scored))
+
+    # ── 3. Select top-k using the configured relevance threshold ─────────────────────────
     top_repos = select_top_k(
         scored,
         k=cfg.top_k,
@@ -74,7 +85,7 @@ def run(cfg: Config | None = None) -> None:
         logger.warning("No repositories passed the relevance threshold. Exiting.")
         return
 
-    # ── 4. Build knowledge graph from selected repositories ─────────────────────
+    # ── 4. Build knowledge graph from selected repositories ──────────────────────────────
     kg = extract_graph_from_repos(top_repos)
     retriever = GraphRetriever(kg)
     logger.info(
@@ -82,20 +93,20 @@ def run(cfg: Config | None = None) -> None:
         retriever.summarize().replace("\n", " | "),
     )
 
-    # ── 5. Persist results ───────────────────────────────────────────────────────
+    # ── 5. Persist results ──────────────────────────────────────────────────────────────────
     save_repos(top_repos, report_date=today)
 
-    # ── 6. Build Markdown report ───────────────────────────────────────────────────
+    # ── 6. Build Markdown report ────────────────────────────────────────────────────────────
     report_markdown = build_markdown_report(top_repos, today)
     logger.info("Markdown report built (%d chars).", len(report_markdown))
 
-    # ── 7. Send email ─────────────────────────────────────────────────────────────
+    # ── 7. Send email ───────────────────────────────────────────────────────────────────
     try:
         send_report_via_email(report_markdown, cfg.report_recipient)
     except Exception as exc:  # noqa: BLE001
         logger.error("Email delivery failed: %s", exc)
 
-    # ── 8. Update Gist ───────────────────────────────────────────────────────────
+    # ── 8. Update Gist ───────────────────────────────────────────────────────────────────
     if cfg.gist_id:
         try:
             gist_url = upload_to_gist(report_markdown, cfg.gist_id, cfg.github_token)
