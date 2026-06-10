@@ -24,11 +24,17 @@ function normaliseTitle(title) {
 }
 
 function generateBibtex(papers) {
+  const keyCounts = new Map();
   return papers.map(paper => {
     const firstAuthor = (paper.authors || '').split(',')[0].trim();
-    const lastName = firstAuthor.split(' ').pop() || 'Unknown';
+    const rawLast = firstAuthor.split(' ').pop() || '';
+    const lastName = rawLast.replace(/[^a-zA-Z0-9]/g, '') || 'Unknown';
     const year = (paper.date || '').match(/\d{4}/)?.[0] || 'XXXX';
-    const key = `${lastName}${year}`;
+    const base = lastName + year;
+    const count = keyCounts.get(base) || 0;
+    keyCounts.set(base, count + 1);
+    const key = count === 0 ? base : `${base}${String.fromCharCode(96 + count)}`;
+
     const esc = s => (s || '').replace(/[{}\\]/g, '\\$&');
     const note = [
       paper.abstract ? `Abstract: ${paper.abstract}` : '',
@@ -55,12 +61,58 @@ export default function App() {
   const [searchedTopics, setSearchedTopics] = useState([]);
 
   const loading = Object.values(topicStatus).some(s => s === 'loading');
+  const hasFetched = searchedTopics.length > 0;
 
   const toggleTopic = (id) => {
     setSelectedTopics(prev =>
       prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]
     );
   };
+
+  const fetchOneTopic = useCallback(async (topic) => {
+    setTopicStatus(prev => ({ ...prev, [topic.id]: 'loading' }));
+    setTopicErrors(prev => { const n = { ...prev }; delete n[topic.id]; return n; });
+
+    try {
+      const response = await fetch("/api/papers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topicLabel: topic.label }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${response.status}`);
+      }
+
+      const { papers: fetched = [], fromCache } = await response.json();
+      const tagged = fetched.map((p, i) => ({
+        ...p,
+        id: `${topic.id}-${i}`,
+        topic: topic.id,
+        topicLabel: topic.label,
+      }));
+
+      setPapers(prev => {
+        // Remove stale results for this topic (handles retry correctly)
+        const withoutThisTopic = prev.filter(p => p.topic !== topic.id);
+        const seen = new Set(withoutThisTopic.map(p => normaliseTitle(p.title)));
+        const unique = tagged.filter(p => {
+          const norm = normaliseTitle(p.title);
+          if (seen.has(norm)) return false;
+          seen.add(norm);
+          return true;
+        });
+        return [...withoutThisTopic, ...unique];
+      });
+
+      setTopicStatus(prev => ({ ...prev, [topic.id]: fromCache ? 'cached' : 'done' }));
+    } catch (err) {
+      console.error(`Failed to fetch ${topic.label}:`, err);
+      setTopicStatus(prev => ({ ...prev, [topic.id]: 'error' }));
+      setTopicErrors(prev => ({ ...prev, [topic.id]: err.message }));
+    }
+  }, []);
 
   const fetchPapers = useCallback(async () => {
     if (selectedTopics.length === 0) return;
@@ -73,48 +125,10 @@ export default function App() {
     setSearchedTopics([...selectedTopics]);
 
     const topicsToFetch = TOPICS.filter(t => selectedTopics.includes(t.id));
-
     for (const topic of topicsToFetch) {
-      setTopicStatus(prev => ({ ...prev, [topic.id]: 'loading' }));
-      try {
-        const response = await fetch("/api/papers", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ topicLabel: topic.label }),
-        });
-
-        if (!response.ok) {
-          const err = await response.json().catch(() => ({}));
-          throw new Error(err.error || `HTTP ${response.status}`);
-        }
-
-        const { papers: fetched = [] } = await response.json();
-        const tagged = fetched.map((p, i) => ({
-          ...p,
-          id: `${topic.id}-${i}`,
-          topic: topic.id,
-          topicLabel: topic.label,
-        }));
-
-        setPapers(prev => {
-          const seen = new Set(prev.map(p => normaliseTitle(p.title)));
-          const unique = tagged.filter(p => {
-            const norm = normaliseTitle(p.title);
-            if (seen.has(norm)) return false;
-            seen.add(norm);
-            return true;
-          });
-          return [...prev, ...unique];
-        });
-
-        setTopicStatus(prev => ({ ...prev, [topic.id]: 'done' }));
-      } catch (err) {
-        console.error(`Failed to fetch ${topic.label}:`, err);
-        setTopicStatus(prev => ({ ...prev, [topic.id]: 'error' }));
-        setTopicErrors(prev => ({ ...prev, [topic.id]: err.message }));
-      }
+      await fetchOneTopic(topic);
     }
-  }, [selectedTopics]);
+  }, [selectedTopics, fetchOneTopic]);
 
   const filtered = activeFilter === "all"
     ? papers
@@ -157,7 +171,7 @@ export default function App() {
             <span style={{ color: "#4a9eff", fontSize: 11, letterSpacing: 4, textTransform: "uppercase" }}>
               ◈ RESEARCH_TERMINAL
             </span>
-            <span style={{ color: "#444", fontSize: 10 }}>v2.2 // academic intelligence layer</span>
+            <span style={{ color: "#444", fontSize: 10 }}>v2.3 // academic intelligence layer</span>
           </div>
           <h1 style={{ margin: 0, fontSize: 26, fontWeight: "normal", color: "#f0ede8", letterSpacing: 1 }}>
             Academic Paper Intelligence
@@ -181,11 +195,13 @@ export default function App() {
               const active = selectedTopics.includes(topic.id);
               const status = topicStatus[topic.id];
               const icon = status === 'loading' ? '⟳'
+                         : status === 'cached'  ? '◎'
                          : status === 'done'    ? '✓'
                          : status === 'error'   ? '✕'
                          : active               ? '■'
                                                 : '□';
-              const iconColor = status === 'done'    ? '#4a9a4a'
+              const iconColor = status === 'cached'  ? '#2a9a9a'
+                              : status === 'done'    ? '#4a9a4a'
                               : status === 'error'   ? '#ff6b6b'
                               : status === 'loading' ? '#f5a623'
                               : undefined;
@@ -308,9 +324,15 @@ export default function App() {
           </>
         )}
 
-        {!loading && papers.length === 0 && selectedTopics.length > 0 && (
+        {!loading && papers.length === 0 && selectedTopics.length > 0 && !hasFetched && (
           <div style={{ color: "#444", fontSize: 13, padding: "40px 0", textAlign: "center" }}>
             Press FETCH PAPERS to retrieve results
+          </div>
+        )}
+
+        {!loading && papers.length === 0 && hasFetched && (
+          <div style={{ color: "#666", fontSize: 13, padding: "40px 0", textAlign: "center" }}>
+            No papers found — try different domains or re-fetch
           </div>
         )}
 
@@ -318,6 +340,8 @@ export default function App() {
           const topic = TOPICS.find(t => t.id === topicId);
           return (
             <div key={topicId} style={{
+              display: "flex",
+              alignItems: "center",
               padding: "10px 16px",
               border: "1px solid #5a1a1a",
               background: "#1a0a0a",
@@ -325,7 +349,23 @@ export default function App() {
               fontSize: 11,
               marginTop: 8,
             }}>
-              ✕ {topic?.label ?? topicId}: {msg}
+              <span>✕ {topic?.label ?? topicId}: {msg}</span>
+              <button
+                onClick={() => fetchOneTopic(topic || { id: topicId, label: topicId })}
+                style={{
+                  marginLeft: 12,
+                  padding: "2px 10px",
+                  background: "transparent",
+                  border: "1px solid #5a1a1a",
+                  color: "#ff6b6b",
+                  cursor: "pointer",
+                  fontSize: 10,
+                  letterSpacing: 1,
+                  fontFamily: "inherit",
+                }}
+              >
+                ↺ RETRY
+              </button>
             </div>
           );
         })}

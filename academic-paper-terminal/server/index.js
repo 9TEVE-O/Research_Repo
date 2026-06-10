@@ -117,6 +117,9 @@ app.post('/api/papers', async (req, res) => {
       try { papers = JSON.parse(rawText); } catch { papers = []; }
     }
 
+    // Guard against non-array (e.g. model returns an object)
+    if (!Array.isArray(papers)) papers = [];
+
     const sanitized = sanitizePapers(papers);
     setCache(safeLabel, sanitized);
     res.json({ papers: sanitized, fromCache: false });
