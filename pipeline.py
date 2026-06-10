@@ -66,7 +66,10 @@ def run(cfg: Config | None = None) -> None:
 
     # ── 2b. Annotate with policy / terms analysis (best-effort) ──────────────────────────
     # Import lazily so that a missing submodule does not prevent pipeline
-    # import or config validation — policy analysis is optional.
+    # import or config validation — policy analysis is entirely optional.
+    # Catch Exception broadly: any failure in this optional step (missing
+    # submodule, network error, malformed data during re-hydration, etc.)
+    # must log and continue rather than crash the pipeline.
     try:
         from policy_analysis import annotate_with_policy  # noqa: PLC0415
         scored_dicts = annotate_with_policy(
@@ -74,9 +77,11 @@ def run(cfg: Config | None = None) -> None:
         )
         scored = [ScoredRepo.from_dict(d) for d in scored_dicts]
         logger.info("Annotated %d repositories with policy analysis.", len(scored))
-    except (RuntimeError, ImportError) as exc:
+    except Exception as exc:  # noqa: BLE001 — best-effort, must not crash pipeline
         logger.warning(
-            "Policy analysis unavailable (submodule missing?): %s — skipping.", exc
+            "Policy analysis failed (%s: %s) — skipping.",
+            type(exc).__name__,
+            exc,
         )
 
     # ── 3. Select top-k using the configured relevance threshold ─────────────────────────
