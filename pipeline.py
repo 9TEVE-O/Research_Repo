@@ -10,7 +10,6 @@ from config import Config, load_config, missing_required_vars
 from github_client import fetch_candidates
 from knowledge_graph import GraphRetriever, extract_graph_from_repos
 from models import ScoredRepo
-from policy_analysis import annotate_with_policy
 from report import build_markdown_report
 from scoring import score_all
 from selector import select_top_k
@@ -65,14 +64,20 @@ def run(cfg: Config | None = None) -> None:
     # ── 2. Score each candidate with the LLM ──────────────────────────────────────────────
     scored = score_all(raw_candidates, openai_client, model=cfg.llm_model)
 
-    # ── 2b. Annotate with policy / terms analysis ──────────────────────────────────────
-    # annotate_with_policy expects plain dicts; convert to dicts, annotate,
-    # then re-hydrate back into ScoredRepo objects preserving the policy field.
-    scored_dicts = annotate_with_policy(
-        [r.to_dict() for r in scored], cfg.github_token
-    )
-    scored = [ScoredRepo.from_dict(d) for d in scored_dicts]
-    logger.info("Annotated %d repositories with policy analysis.", len(scored))
+    # ── 2b. Annotate with policy / terms analysis (best-effort) ──────────────────────────
+    # Import lazily so that a missing submodule does not prevent pipeline
+    # import or config validation — policy analysis is optional.
+    try:
+        from policy_analysis import annotate_with_policy  # noqa: PLC0415
+        scored_dicts = annotate_with_policy(
+            [r.to_dict() for r in scored], cfg.github_token
+        )
+        scored = [ScoredRepo.from_dict(d) for d in scored_dicts]
+        logger.info("Annotated %d repositories with policy analysis.", len(scored))
+    except (RuntimeError, ImportError) as exc:
+        logger.warning(
+            "Policy analysis unavailable (submodule missing?): %s — skipping.", exc
+        )
 
     # ── 3. Select top-k using the configured relevance threshold ─────────────────────────
     top_repos = select_top_k(
