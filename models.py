@@ -1,6 +1,7 @@
 """Typed dataclasses and schemas for the research agent."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Optional
 
 
 @dataclass
@@ -12,6 +13,7 @@ class ScoredRepo:
     relevance_score: int
     summary: str
     reason: str
+    policy: Optional[dict] = field(default=None, repr=False)
 
     def to_dict(self) -> dict:
         """Return a plain dict representation."""
@@ -21,6 +23,7 @@ class ScoredRepo:
             "relevance_score": self.relevance_score,
             "summary": self.summary,
             "reason": self.reason,
+            "policy": self.policy,
         }
 
     @classmethod
@@ -32,4 +35,5 @@ class ScoredRepo:
             relevance_score=int(data["relevance_score"]),
             summary=data["summary"],
             reason=data["reason"],
+            policy=data.get("policy"),
         )
