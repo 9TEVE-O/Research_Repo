@@ -1,25 +1,15 @@
 """Select the top-k repository candidates by relevance score."""
 
 import logging
-from dataclasses import dataclass
-from typing import List, Optional
+from typing import List
+
+from models import ScoredRepo
 
 logger = logging.getLogger(__name__)
 
 SCORE_THRESHOLD = 50
 _SCORE_MIN = 0
 _SCORE_MAX = 100
-
-
-@dataclass
-class ScoredRepo:
-    """Scored repository candidate."""
-    name: str
-    url: str
-    relevance_score: int
-    summary: str
-    reason: str
-    policy: Optional[dict] = None
 
 
 def dict_to_scored_repo(repo_dict: dict) -> ScoredRepo:
@@ -34,12 +24,16 @@ def dict_to_scored_repo(repo_dict: dict) -> ScoredRepo:
     )
 
 
-def select_top_k(candidates: List, k: int = 3) -> List[ScoredRepo]:
+def select_top_k(
+    candidates: List,
+    k: int = 3,
+    threshold: int = SCORE_THRESHOLD,
+) -> List[ScoredRepo]:
     """Return up to k candidates sorted by relevance_score descending.
 
     Rules:
-    - Candidates with scores outside the valid range 0–100 are discarded.
-    - Candidates with score <= 50 are excluded.
+    - Candidates with scores outside the valid range 0-100 are discarded.
+    - Candidates with score <= threshold are excluded.
     - If the number of qualifying candidates is less than k, return all
       that meet the threshold and emit a warning.
     - If no candidates meet the threshold, return an empty list and log
@@ -49,6 +43,7 @@ def select_top_k(candidates: List, k: int = 3) -> List[ScoredRepo]:
         candidates: List of scored repo dicts or ScoredRepo objects, each
                    containing a ``relevance_score`` attribute/key.
         k:          Maximum number of results to return (default 3).
+        threshold:  Minimum relevance score to qualify (default 50).
 
     Returns:
         A list of up to k ScoredRepo objects sorted by score descending.
@@ -76,14 +71,14 @@ def select_top_k(candidates: List, k: int = 3) -> List[ScoredRepo]:
             continue
         valid.append(c)
 
-    qualified = [c for c in valid if c.relevance_score > SCORE_THRESHOLD]
+    qualified = [c for c in valid if c.relevance_score > threshold]
     qualified.sort(key=lambda c: c.relevance_score, reverse=True)
 
     if not qualified:
         logger.warning(
             "No candidates met the minimum relevance threshold of %d. "
             "Returning empty list.",
-            SCORE_THRESHOLD,
+            threshold,
         )
         return []
 
@@ -92,7 +87,7 @@ def select_top_k(candidates: List, k: int = 3) -> List[ScoredRepo]:
             "Only %d candidate(s) met the relevance threshold of %d "
             "(requested k=%d). Returning all qualifying candidates.",
             len(qualified),
-            SCORE_THRESHOLD,
+            threshold,
             k,
         )
         return qualified
