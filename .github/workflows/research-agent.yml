@@ -9,9 +9,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write   # needed to commit state and report back to the repository
-    env:
-      GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
-      RESEARCH_GIST_ID: ${{ secrets.RESEARCH_GIST_ID }}
     steps:
       - uses: actions/checkout@v4
 
@@ -41,15 +38,27 @@ jobs:
           git diff --cached --quiet || git commit -m "chore: update research state [skip ci]"
           git push
 
+      - name: Check Gist config
+        id: gist_config
+        env:
+          GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
+          RESEARCH_GIST_ID: ${{ secrets.RESEARCH_GIST_ID }}
+        run: |
+          if [[ -n "$GIST_TOKEN" && -n "$RESEARCH_GIST_ID" ]]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Commit report to Gist
-        if: ${{ env.GIST_TOKEN != '' && env.RESEARCH_GIST_ID != '' && hashFiles('reports/latest.md') != '' }}
+        if: ${{ steps.gist_config.outputs.configured == 'true' && hashFiles('reports/latest.md') != '' }}
         uses: exuanbo/actions-deploy-gist@v1
         with:
-          token: ${{ env.GIST_TOKEN }}
-          gist_id: ${{ env.RESEARCH_GIST_ID }}
+          token: ${{ secrets.GIST_TOKEN }}
+          gist_id: ${{ secrets.RESEARCH_GIST_ID }}
           file_path: reports/latest.md
 
       - name: Skip Gist report
-        if: ${{ env.GIST_TOKEN == '' || env.RESEARCH_GIST_ID == '' || hashFiles('reports/latest.md') == '' }}
+        if: ${{ steps.gist_config.outputs.configured != 'true' || hashFiles('reports/latest.md') == '' }}
         run: |
           echo "::notice::Skipping Gist publish because GIST_TOKEN, RESEARCH_GIST_ID, or reports/latest.md is missing."
