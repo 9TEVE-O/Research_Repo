@@ -70,4 +70,4 @@ jobs:
       - name: Skip Gist report
         if: ${{ steps.gist_config.outputs.configured != 'true' || steps.check_report.outputs.exists != 'true' }}
         run: |
-          echo "::notice::Skipping Gist publish because GIST_TOKEN, RESEARCH_GIST_ID, or reports/latest.md is missing."
+          echo "::warning::Skipping Gist publish because GIST_TOKEN, RESEARCH_GIST_ID, or reports/latest.md is missing."
