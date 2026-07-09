@@ -38,9 +38,36 @@ jobs:
           git diff --cached --quiet || git commit -m "chore: update research state [skip ci]"
           git push
 
+      - name: Check Gist config
+        id: gist_config
+        env:
+          GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
+          RESEARCH_GIST_ID: ${{ secrets.RESEARCH_GIST_ID }}
+        run: |
+          if [[ -n "$GIST_TOKEN" && -n "$RESEARCH_GIST_ID" ]]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check report file
+        id: check_report
+        run: |
+          if [[ -f reports/latest.md ]]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Commit report to Gist
+        if: ${{ steps.gist_config.outputs.configured == 'true' && steps.check_report.outputs.exists == 'true' }}
         uses: exuanbo/actions-deploy-gist@v1
         with:
           token: ${{ secrets.GIST_TOKEN }}
           gist_id: ${{ secrets.RESEARCH_GIST_ID }}
           file_path: reports/latest.md
+
+      - name: Skip Gist report
+        if: ${{ steps.gist_config.outputs.configured != 'true' || steps.check_report.outputs.exists != 'true' }}
+        run: |
+          echo "::warning::Skipping Gist publish because GIST_TOKEN, RESEARCH_GIST_ID, or reports/latest.md is missing."
