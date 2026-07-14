@@ -1,7 +1,7 @@
 """Tests for github_client.py."""
 
 import pytest
-import responses as rsps_lib
+from unittest.mock import Mock, patch
 
 from github_client import GITHUB_SEARCH_URL, fetch_candidates
 
@@ -29,51 +29,53 @@ SAMPLE_RESPONSE = {
 
 
 class TestFetchCandidates:
-    @rsps_lib.activate
-    def test_returns_items(self):
-        rsps_lib.add(
-            rsps_lib.GET,
-            GITHUB_SEARCH_URL,
-            json=SAMPLE_RESPONSE,
-            status=200,
-        )
+    @patch("github_client.requests.get")
+    def test_returns_items(self, mock_get):
+        mock_response = Mock()
+        mock_response.json.return_value = SAMPLE_RESPONSE
+        mock_get.return_value = mock_response
+
         result = fetch_candidates("fake-token")
         assert len(result) == 2
         assert result[0]["full_name"] == "owner/repo-a"
 
-    @rsps_lib.activate
-    def test_empty_items(self):
-        rsps_lib.add(
-            rsps_lib.GET,
-            GITHUB_SEARCH_URL,
-            json={"total_count": 0, "incomplete_results": False, "items": []},
-            status=200,
-        )
+    @patch("github_client.requests.get")
+    def test_empty_items(self, mock_get):
+        mock_response = Mock()
+        mock_response.json.return_value = {
+            "total_count": 0,
+            "incomplete_results": False,
+            "items": [],
+        }
+        mock_get.return_value = mock_response
+
         result = fetch_candidates("fake-token")
         assert result == []
 
-    @rsps_lib.activate
-    def test_http_error_raises(self):
+    @patch("github_client.requests.get")
+    def test_http_error_raises(self, mock_get):
         import requests
 
-        rsps_lib.add(
-            rsps_lib.GET,
-            GITHUB_SEARCH_URL,
-            json={"message": "Bad credentials"},
-            status=401,
+        mock_response = Mock()
+        mock_response.raise_for_status.side_effect = requests.HTTPError(
+            "401 Client Error"
         )
+        mock_get.return_value = mock_response
+
         with pytest.raises(requests.HTTPError):
             fetch_candidates("bad-token")
 
-    @rsps_lib.activate
-    def test_uses_provided_query_and_per_page(self):
-        rsps_lib.add(
-            rsps_lib.GET,
-            GITHUB_SEARCH_URL,
-            json=SAMPLE_RESPONSE,
-            status=200,
-        )
+    @patch("github_client.requests.get")
+    def test_uses_provided_query_and_per_page(self, mock_get):
+        mock_response = Mock()
+        mock_response.json.return_value = SAMPLE_RESPONSE
+        mock_get.return_value = mock_response
+
         fetch_candidates("tok", query="topic:agent", per_page=10)
-        req = rsps_lib.calls[0].request
-        assert "topic%3Aagent" in req.url or "topic:agent" in req.url
-        assert "per_page=10" in req.url
+
+        mock_get.assert_called_once()
+        assert mock_get.call_args.kwargs["params"] == {
+            "q": "topic:agent",
+            "sort": "stars",
+            "per_page": 10,
+        }

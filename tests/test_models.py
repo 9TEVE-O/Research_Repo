@@ -25,7 +25,14 @@ class TestScoredRepo:
     def test_to_dict_keys(self):
         repo = _make_repo()
         d = repo.to_dict()
-        assert set(d) == {"name", "url", "relevance_score", "summary", "reason"}
+        assert set(d) == {
+            "name",
+            "url",
+            "relevance_score",
+            "summary",
+            "reason",
+            "policy",
+        }
 
     def test_from_dict_coerces_score_to_int(self):
         data = {
