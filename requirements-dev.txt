@@ -1,0 +1,6 @@
+# Development / test dependencies for Research_Repo.
+# Runtime dependencies are pinned in requirements.txt.
+-r requirements.txt
+
+# Test runner used by the tests/ suite.
+pytest==9.1.1
