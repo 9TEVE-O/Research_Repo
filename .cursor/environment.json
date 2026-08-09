@@ -1,0 +1,18 @@
+{
+  "name": "Research_Repo",
+  "install": "bash .cursor/install.sh",
+  "terminals": [
+    {
+      "name": "paper-api",
+      "command": "cd academic-paper-terminal/server && node index.js"
+    },
+    {
+      "name": "paper-web",
+      "command": "cd academic-paper-terminal && npm run dev -- --host 0.0.0.0"
+    }
+  ],
+  "ports": [
+    { "name": "paper-web", "port": 5173 },
+    { "name": "paper-api", "port": 3001 }
+  ]
+}
