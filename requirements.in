@@ -1,4 +1,4 @@
-markdown>=3.5,<4
+markdown>=3.10.3,<4
 nh3>=0.3.6,<1
 openai>=2.44.0,<3
 PyGithub>=2.9.1,<3

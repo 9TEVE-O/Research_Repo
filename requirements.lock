@@ -418,9 +418,9 @@ jiter==0.13.0 \
     --hash=sha256:fe49d3ff6db74321f144dff9addd4a5874d3105ac5ba7c5b77fac099cfae31ae \
     --hash=sha256:ff732bd0a0e778f43d5009840f20b935e79087b4dc65bd36f1cd0f9b04b8ff7f
     # via openai
-markdown==3.10.2 \
-    --hash=sha256:994d51325d25ad8aa7ce4ebaec003febcce822c3f8c911e3b17c52f7f589f950 \
-    --hash=sha256:e91464b71ae3ee7afd3017d9f358ef0baf158fd9a298db92f1d4761133824c36
+markdown==3.10.3 \
+    --hash=sha256:3589362618f743188b4d955b874402bc814f4f83f544dc207719f4baa7d9c45f \
+    --hash=sha256:fa6c92a00a4a3c98b22728c64a935ae1928250ae65058a6ded814d2cc29a4cea
     # via -r requirements.in
 nh3==0.3.4 \
     --hash=sha256:07999b998bf89692738f15c0eac76a416382932f855709e0b7488b595c30ec89 \
