@@ -38,6 +38,21 @@ class TestLoadConfig:
         assert cfg.llm_model == "gpt-4o-mini"
         assert cfg.gist_id == ""
 
+    def test_gist_token_falls_back_to_github_token(self, monkeypatch):
+        for k, v in REQUIRED_ENV.items():
+            monkeypatch.setenv(k, v)
+        monkeypatch.delenv("GITHUB_GIST_TOKEN", raising=False)
+        cfg = load_config()
+        assert cfg.gist_token == cfg.github_token
+
+    def test_gist_token_uses_dedicated_var_when_set(self, monkeypatch):
+        for k, v in REQUIRED_ENV.items():
+            monkeypatch.setenv(k, v)
+        monkeypatch.setenv("GITHUB_GIST_TOKEN", "gist-scoped-tok")
+        cfg = load_config()
+        assert cfg.gist_token == "gist-scoped-tok"
+        assert cfg.gist_token != cfg.github_token
+
     def test_optional_overrides(self, monkeypatch):
         for k, v in REQUIRED_ENV.items():
             monkeypatch.setenv(k, v)

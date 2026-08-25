@@ -111,18 +111,23 @@ def run(cfg: Config | None = None) -> None:
     logger.info("Markdown report built (%d chars).", len(report_markdown))
 
     # ── 7. Send email ───────────────────────────────────────────────────────────────────
+    # Re-raise after logging: email delivery is the primary purpose of a
+    # scheduled run, so a swallowed failure here would let the run report
+    # success (e.g. via CI's job status) while no report was actually sent.
     try:
         send_report_via_email(report_markdown, cfg.report_recipient)
     except Exception as exc:  # noqa: BLE001
         logger.error("Email delivery failed: %s", exc)
+        raise
 
     # ── 8. Update Gist ───────────────────────────────────────────────────────────────────
     if cfg.gist_id:
         try:
-            gist_url = upload_to_gist(report_markdown, cfg.gist_id, cfg.github_token)
+            gist_url = upload_to_gist(report_markdown, cfg.gist_id, cfg.gist_token)
             logger.info("Gist updated: %s", gist_url)
         except Exception as exc:  # noqa: BLE001
             logger.error("Gist upload failed: %s", exc)
+            raise
     else:
         logger.warning("GIST_ID not set; skipping Gist upload.")
 

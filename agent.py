@@ -16,6 +16,8 @@ Environment variables required:
 Optional environment variables:
     GIST_ID             - ID of the Gist to update; if unset, Gist upload is
                            skipped
+    GITHUB_GIST_TOKEN   - GitHub personal access token (gist scope only);
+                          falls back to GITHUB_TOKEN if not set
     SEARCH_QUERY, SEARCH_PER_PAGE, TOP_K, SCORE_THRESHOLD, LLM_MODEL
                          - see config.load_config() for defaults
 """
