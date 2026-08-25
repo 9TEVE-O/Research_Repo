@@ -16,9 +16,13 @@ LLM_SYSTEM_PROMPT = (
     "1. relevance_score: integer 0–100 for AI/LLM research relevance.\n"
     "2. summary: one-paragraph summary (2–4 sentences).\n"
     "3. reason: one sentence explaining the score.\n\n"
-    "Reply in this exact JSON format:\n"
+    "You MUST reply ONLY with a valid JSON object and no other text:\n"
     '{"relevance_score": <int>, "summary": "<str>", "reason": "<str>"}'
 )
+
+# Maximum character lengths for LLM-returned text fields.
+_MAX_SUMMARY_LEN = 1000
+_MAX_REASON_LEN = 500
 
 
 def score_repository(
@@ -58,24 +62,34 @@ def score_repository(
             ],
             temperature=0.2,
             max_tokens=300,
+            response_format={"type": "json_object"},
         )
         raw = response.choices[0].message.content.strip()
 
-        # Strip markdown code fences if present
+        # Strip markdown code fences if present. response_format already
+        # constrains the API to emit a bare JSON object, but this keeps the
+        # parser tolerant of mocked/older responses that still fence it.
         raw = re.sub(r"^```(?:json)?\s*", "", raw)
         raw = re.sub(r"\s*```$", "", raw)
 
         data = json.loads(raw)
+
+        # Validate types and ranges on all returned fields so that a
+        # prompt-injection payload cannot smuggle out-of-range scores or
+        # non-string content into the rest of the pipeline.
         score = int(data["relevance_score"])
         if not 0 <= score <= 100:
             raise ValueError("relevance_score must be between 0 and 100")
+
+        summary = str(data["summary"])[:_MAX_SUMMARY_LEN]
+        reason = str(data["reason"])[:_MAX_REASON_LEN]
 
         return ScoredRepo(
             name=repo.get("full_name", ""),
             url=repo.get("html_url", ""),
             relevance_score=score,
-            summary=data["summary"],
-            reason=data["reason"],
+            summary=summary,
+            reason=reason,
         )
     except (
         json.JSONDecodeError,

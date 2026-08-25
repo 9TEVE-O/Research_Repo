@@ -67,6 +67,36 @@ class TestScoreRepository:
         result = score_repository(_raw_repo(), client)
         assert result is None
 
+    def test_requests_json_object_response_format(self):
+        client = _mock_client(_make_llm_response())
+        score_repository(_raw_repo(), client)
+        _, kwargs = client.chat.completions.create.call_args
+        assert kwargs["response_format"] == {"type": "json_object"}
+
+    def test_non_string_summary_and_reason_are_coerced(self):
+        content = json.dumps(
+            {"relevance_score": 80, "summary": {"nested": "object"}, "reason": 123}
+        )
+        client = _mock_client(content)
+        result = score_repository(_raw_repo(), client)
+        assert isinstance(result, ScoredRepo)
+        assert result.summary == "{'nested': 'object'}"
+        assert result.reason == "123"
+
+    def test_summary_and_reason_are_length_capped(self):
+        content = json.dumps(
+            {
+                "relevance_score": 80,
+                "summary": "s" * 2000,
+                "reason": "r" * 2000,
+            }
+        )
+        client = _mock_client(content)
+        result = score_repository(_raw_repo(), client)
+        assert isinstance(result, ScoredRepo)
+        assert len(result.summary) == 1000
+        assert len(result.reason) == 500
+
 
 class TestScoreAll:
     def test_skips_failed_repos(self):
