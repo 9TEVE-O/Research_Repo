@@ -31,6 +31,7 @@ class Config:
     smtp_password: str
     smtp_port: int = 587
     gist_id: str = ""
+    gist_token: str = ""
     search_query: str = "topic:llm topic:research stars:>50"
     search_per_page: int = 20
     top_k: int = 3
@@ -59,11 +60,16 @@ def load_config() -> Config:
         SMTP_SERVER, SMTP_USER, SMTP_PASSWORD
 
     Optional variables:
-        SMTP_PORT (default 587), GIST_ID, SEARCH_QUERY,
+        SMTP_PORT (default 587), GIST_ID, GITHUB_GIST_TOKEN, SEARCH_QUERY,
         SEARCH_PER_PAGE, TOP_K, SCORE_THRESHOLD, LLM_MODEL
+
+    GITHUB_GIST_TOKEN, when set, is used for Gist uploads instead of
+    GITHUB_TOKEN so that the search token (public_repo scope) need not
+    also carry gist scope. Falls back to GITHUB_TOKEN when unset.
     """
+    github_token = os.environ.get("GITHUB_TOKEN", "")
     return Config(
-        github_token=os.environ.get("GITHUB_TOKEN", ""),
+        github_token=github_token,
         openai_api_key=os.environ.get("OPENAI_API_KEY", ""),
         report_recipient=os.environ.get("REPORT_RECIPIENT", ""),
         smtp_server=os.environ.get("SMTP_SERVER", ""),
@@ -71,6 +77,7 @@ def load_config() -> Config:
         smtp_password=os.environ.get("SMTP_PASSWORD", ""),
         smtp_port=int(os.environ.get("SMTP_PORT", 587)),
         gist_id=os.environ.get("GIST_ID", ""),
+        gist_token=os.environ.get("GITHUB_GIST_TOKEN") or github_token,
         search_query=os.environ.get(
             "SEARCH_QUERY", "topic:llm topic:research stars:>50"
         ),
