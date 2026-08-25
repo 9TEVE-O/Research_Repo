@@ -29,7 +29,7 @@ Research_Repo/
 ├── policy_analysis.py
 ├── external/
 │   └── AI-Policy-Terms-Analyzer/
-└── requirements.txt
+└── requirements.lock
 ```
 
 ---
@@ -49,7 +49,7 @@ Research_Repo/
 git clone --recurse-submodules https://github.com/9TEVE-O/Research_Repo.git
 cd Research_Repo
 python -m pip install --upgrade pip
-pip install -r requirements.txt
+pip install --require-hashes -r requirements.lock
 ```
 
 If cloned without submodules:
