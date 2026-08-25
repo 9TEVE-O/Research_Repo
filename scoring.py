@@ -76,8 +76,18 @@ def score_repository(
 
         # Validate types and ranges on all returned fields so that a
         # prompt-injection payload cannot smuggle out-of-range scores or
-        # non-string content into the rest of the pipeline.
-        score = int(data["relevance_score"])
+        # non-string content into the rest of the pipeline. Reject bool
+        # (a JSON true/false is technically an int subclass in Python) and
+        # non-integral floats explicitly rather than silently truncating
+        # them with int().
+        raw_score = data["relevance_score"]
+        if isinstance(raw_score, bool) or not isinstance(raw_score, (int, float)):
+            raise TypeError(
+                f"relevance_score must be an integer, got {type(raw_score).__name__}"
+            )
+        if isinstance(raw_score, float) and not raw_score.is_integer():
+            raise ValueError(f"relevance_score {raw_score} is not an integer")
+        score = int(raw_score)
         if not 0 <= score <= 100:
             raise ValueError("relevance_score must be between 0 and 100")
 

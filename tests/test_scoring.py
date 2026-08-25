@@ -83,6 +83,32 @@ class TestScoreRepository:
         assert result.summary == "{'nested': 'object'}"
         assert result.reason == "123"
 
+    def test_returns_none_on_score_above_range(self):
+        client = _mock_client(_make_llm_response(score=101))
+        result = score_repository(_raw_repo(), client)
+        assert result is None
+
+    def test_returns_none_on_score_below_range(self):
+        client = _mock_client(_make_llm_response(score=-1))
+        result = score_repository(_raw_repo(), client)
+        assert result is None
+
+    def test_returns_none_on_boolean_score(self):
+        content = json.dumps(
+            {"relevance_score": True, "summary": "s", "reason": "r"}
+        )
+        client = _mock_client(content)
+        result = score_repository(_raw_repo(), client)
+        assert result is None
+
+    def test_returns_none_on_non_integral_float_score(self):
+        content = json.dumps(
+            {"relevance_score": 85.9, "summary": "s", "reason": "r"}
+        )
+        client = _mock_client(content)
+        result = score_repository(_raw_repo(), client)
+        assert result is None
+
     def test_summary_and_reason_are_length_capped(self):
         content = json.dumps(
             {
