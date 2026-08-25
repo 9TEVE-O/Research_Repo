@@ -53,7 +53,7 @@ def build_markdown_report(repos: list, date: str) -> str:
         # ── Optional Policy & Terms Analysis subsection ──────────────────
         policy = getattr(repo, 'policy', None)
         if policy:
-            lines.append("**🛡️ Policy & Terms Analysis**\n")
+            lines.append("**🛡️ Policy & Terms Signals (heuristic keyword scan)**\n")
             error = policy.get("error") if isinstance(policy, dict) else getattr(policy, 'error', None)
             if error:
                 lines.append(
@@ -69,7 +69,7 @@ def build_markdown_report(repos: list, date: str) -> str:
                 medium = int(concerns.get("medium", 0))
                 low = int(concerns.get("low", 0))
                 lines.append(
-                    f"**🔐 Privacy concerns:** High: {high} · "
+                    f"**🔐 Keyword signal counts:** High: {high} · "
                     f"Medium: {medium} · Low: {low}\n"
                 )
 
