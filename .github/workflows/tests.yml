@@ -1,0 +1,23 @@
+name: Tests
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install runtime dependencies
+        run: pip install --require-hashes -r requirements.lock
+
+      - name: Install test dependencies
+        run: pip install pytest==9.1.1
+
+      - name: Run tests
+        run: python -m pytest -q
