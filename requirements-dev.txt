@@ -1,13 +1,14 @@
 # Development / test dependencies for Research_Repo.
-# Runtime dependencies are pinned (with hashes) in requirements.lock.
+#
+# Runtime dependencies are pinned (with hashes) in requirements.lock; test
+# dependencies (pytest and its own transitive deps) are pinned (with hashes)
+# in requirements-dev.lock, generated from requirements-dev.in via:
+#
+#   pip-compile --generate-hashes --output-file=requirements-dev.lock requirements-dev.in
 #
 # requirements.lock uses --generate-hashes, which puts pip into
-# hash-checking mode: every requirement resolved in the same invocation
-# must then carry a hash, including pytest below. Install in two steps
-# instead of `pip install -r requirements-dev.txt`:
+# hash-checking mode: every requirement resolved in the same invocation must
+# then carry a hash. Install both sets, each with --require-hashes:
 #
 #   pip install --require-hashes -r requirements.lock
-#   pip install pytest==9.1.1
-
-# Test runner used by the tests/ suite.
-pytest==9.1.1
+#   pip install --require-hashes -r requirements-dev.lock

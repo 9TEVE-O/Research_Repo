@@ -17,7 +17,7 @@ jobs:
         run: pip install --require-hashes -r requirements.lock
 
       - name: Install test dependencies
-        run: pip install pytest==9.1.1
+        run: pip install --require-hashes -r requirements-dev.lock
 
       - name: Run tests
         run: python -m pytest -q

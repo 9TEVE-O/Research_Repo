@@ -25,5 +25,8 @@ jobs:
               with:
                   python-version: "3.12"
 
-            - name: Install dependencies
+            - name: Install runtime dependencies
               run: pip install --require-hashes -r requirements.lock
+
+            - name: Install test dependencies
+              run: pip install --require-hashes -r requirements-dev.lock
