@@ -66,6 +66,19 @@ class TestLoadConfig:
         assert cfg.gist_id == "abc123"
         assert cfg.llm_model == "gpt-4o"
 
+    def test_blank_optional_numeric_env_vars_use_defaults(self, monkeypatch):
+        for k, v in REQUIRED_ENV.items():
+            monkeypatch.setenv(k, v)
+        monkeypatch.setenv("SMTP_PORT", "")
+        monkeypatch.setenv("SEARCH_PER_PAGE", " ")
+        monkeypatch.setenv("TOP_K", "")
+        monkeypatch.setenv("SCORE_THRESHOLD", "\t")
+        cfg = load_config()
+        assert cfg.smtp_port == 587
+        assert cfg.search_per_page == 20
+        assert cfg.top_k == 3
+        assert cfg.score_threshold == 50
+
 
 class TestMissingRequiredVars:
     def test_returns_empty_when_all_set(self, monkeypatch):
@@ -85,4 +98,3 @@ class TestMissingRequiredVars:
         monkeypatch.delenv("SMTP_PASSWORD", raising=False)
         missing = missing_required_vars()
         assert missing == ["SMTP_PASSWORD"]
-
