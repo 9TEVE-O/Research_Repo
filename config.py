@@ -19,7 +19,10 @@ def _get_optional_int_env(name: str, default: int) -> int:
     value = os.environ.get(name)
     if value is None or not value.strip():
         return default
-    return int(value)
+    try:
+        return int(value)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be an integer, got {value!r}") from exc
 
 
 def missing_required_vars() -> list[str]:
@@ -94,4 +97,3 @@ def load_config() -> Config:
         score_threshold=_get_optional_int_env("SCORE_THRESHOLD", 50),
         llm_model=os.environ.get("LLM_MODEL", "gpt-4o-mini"),
     )
-

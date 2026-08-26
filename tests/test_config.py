@@ -79,6 +79,13 @@ class TestLoadConfig:
         assert cfg.top_k == 3
         assert cfg.score_threshold == 50
 
+    def test_invalid_optional_numeric_env_var_raises_clear_error(self, monkeypatch):
+        for k, v in REQUIRED_ENV.items():
+            monkeypatch.setenv(k, v)
+        monkeypatch.setenv("SMTP_PORT", "abc")
+        with pytest.raises(ValueError, match="SMTP_PORT must be an integer"):
+            load_config()
+
 
 class TestMissingRequiredVars:
     def test_returns_empty_when_all_set(self, monkeypatch):
