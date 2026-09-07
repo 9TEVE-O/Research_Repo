@@ -38,6 +38,13 @@ class TestLoadConfig:
         assert cfg.llm_model == "gpt-4o-mini"
         assert cfg.gist_id == ""
 
+    def test_blank_optional_port_uses_default(self, monkeypatch):
+        for k, v in REQUIRED_ENV.items():
+            monkeypatch.setenv(k, v)
+        monkeypatch.setenv("SMTP_PORT", "")
+        cfg = load_config()
+        assert cfg.smtp_port == 587
+
     def test_gist_token_falls_back_to_github_token(self, monkeypatch):
         for k, v in REQUIRED_ENV.items():
             monkeypatch.setenv(k, v)
@@ -85,4 +92,3 @@ class TestMissingRequiredVars:
         monkeypatch.delenv("SMTP_PASSWORD", raising=False)
         missing = missing_required_vars()
         assert missing == ["SMTP_PASSWORD"]
-

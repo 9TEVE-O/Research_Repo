@@ -75,7 +75,7 @@ def load_config() -> Config:
         smtp_server=os.environ.get("SMTP_SERVER", ""),
         smtp_user=os.environ.get("SMTP_USER", ""),
         smtp_password=os.environ.get("SMTP_PASSWORD", ""),
-        smtp_port=int(os.environ.get("SMTP_PORT", 587)),
+        smtp_port=int(os.environ.get("SMTP_PORT") or 587),
         gist_id=os.environ.get("GIST_ID", ""),
         gist_token=os.environ.get("GITHUB_GIST_TOKEN") or github_token,
         search_query=os.environ.get(
@@ -86,5 +86,4 @@ def load_config() -> Config:
         score_threshold=int(os.environ.get("SCORE_THRESHOLD", 50)),
         llm_model=os.environ.get("LLM_MODEL", "gpt-4o-mini"),
     )
-
 
