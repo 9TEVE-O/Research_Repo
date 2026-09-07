@@ -45,6 +45,17 @@ class TestLoadConfig:
         cfg = load_config()
         assert cfg.smtp_port == 587
 
+    def test_blank_optional_integers_use_defaults(self, monkeypatch):
+        for k, v in REQUIRED_ENV.items():
+            monkeypatch.setenv(k, v)
+        monkeypatch.setenv("SEARCH_PER_PAGE", "")
+        monkeypatch.setenv("TOP_K", "")
+        monkeypatch.setenv("SCORE_THRESHOLD", "")
+        cfg = load_config()
+        assert cfg.search_per_page == 20
+        assert cfg.top_k == 3
+        assert cfg.score_threshold == 50
+
     def test_gist_token_falls_back_to_github_token(self, monkeypatch):
         for k, v in REQUIRED_ENV.items():
             monkeypatch.setenv(k, v)
