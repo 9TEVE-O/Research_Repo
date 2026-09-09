@@ -14,6 +14,12 @@ REQUIRED_ENV_VARS: tuple[str, ...] = (
 )
 
 
+def _env_int(name: str, default: int) -> int:
+    """Read an integer environment variable, treating blank/missing as default."""
+    value = os.environ.get(name, "").strip()
+    return int(value) if value else default
+
+
 def missing_required_vars() -> list[str]:
     """Return names of required environment variables that are not set."""
     return [name for name in REQUIRED_ENV_VARS if not os.environ.get(name)]
@@ -75,15 +81,15 @@ def load_config() -> Config:
         smtp_server=os.environ.get("SMTP_SERVER", ""),
         smtp_user=os.environ.get("SMTP_USER", ""),
         smtp_password=os.environ.get("SMTP_PASSWORD", ""),
-        smtp_port=int(os.environ.get("SMTP_PORT") or 587),
+        smtp_port=_env_int("SMTP_PORT", 587),
         gist_id=os.environ.get("GIST_ID", ""),
         gist_token=os.environ.get("GITHUB_GIST_TOKEN") or github_token,
         search_query=os.environ.get(
             "SEARCH_QUERY", "topic:llm topic:research stars:>50"
         ),
-        search_per_page=int(os.environ.get("SEARCH_PER_PAGE", 20)),
-        top_k=int(os.environ.get("TOP_K", 3)),
-        score_threshold=int(os.environ.get("SCORE_THRESHOLD", 50)),
+        search_per_page=_env_int("SEARCH_PER_PAGE", 20),
+        top_k=_env_int("TOP_K", 3),
+        score_threshold=_env_int("SCORE_THRESHOLD", 50),
         llm_model=os.environ.get("LLM_MODEL", "gpt-4o-mini"),
     )
 
