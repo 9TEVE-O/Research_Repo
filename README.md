@@ -121,3 +121,38 @@ Use environment variables or GitHub Actions secrets for sensitive configuration.
 ## License
 
 This project is licensed under the MIT License.
+
+## TypeSafe evidence classification (opt-in)
+
+After recovering a source, assess one claim against its supplied text:
+
+```bash
+# Set TYPESAFE_API_KEY in your server environment or secret manager first.
+python typesafe_evidence.py examples/typesafe_claim.json > classification.json
+```
+
+The example is synthetic. Replace it with a JSON record containing `claim`,
+`source_text`, `source_url`, and `source_accessed_at`. Only these four fields are
+sent to TypeSafe. Use text authorised for transmission to that external service.
+The command does not retrieve sources or check their URL, date, or authenticity.
+
+`TYPESAFE_MODEL` (or `--model`) defaults to `jev-latest`. For reproducible trials,
+pin a provider-supported model version; receipts retain requested and returned
+models, contract version, evaluation time, input hash, raw response and token usage.
+The input hash binds the supplied fields; keep the original input separately.
+
+Outcomes are `SUPPORTED`, `CONTRADICTED`, `INSUFFICIENT`, or `ABSTAIN`.
+These describe the relationship between a claim and the supplied source, not
+verified truth or the Newsletter Archaeologist's native evidence taxonomy.
+Every outcome has `review_required: true` and `promotion_status: NOT_PROMOTED`.
+Human promotion remains a separate decision. No confidence threshold grants
+approval. Missing input/key, transport errors and invalid responses fail closed.
+
+This command is separate from automated repository scoring, knowledge-graph
+retention, email and Gist delivery. No scheduled workflow enables it. Existing
+OpenAI scoring continues independently. No new runtime dependency is required.
+
+API contract checked on 7 October 2026:
+[TypeSafe API](https://docs.typesafe.ai/api) and
+[citation-check cookbook](https://docs.typesafe.ai/cookbooks/citation_check).
+Local transport/schema tests do not establish model accuracy or calibration.
