@@ -40,3 +40,7 @@ htmlcov/
 
 # Reports are generated at runtime; only the placeholder is tracked
 reports/latest.md
+
+# Local inventories, recall databases and private comparison results
+.local-research/
+

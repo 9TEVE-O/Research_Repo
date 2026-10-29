@@ -156,3 +156,36 @@ API contract checked on 7 October 2026:
 [TypeSafe API](https://docs.typesafe.ai/api) and
 [citation-check cookbook](https://docs.typesafe.ai/cookbooks/citation_check).
 Local transport/schema tests do not establish model accuracy or calibration.
+
+## Compare discoveries with software you already have
+
+`owned_research.py` is a standard-library-only command for comparing candidates
+against a supplied GitHub inventory, then saving and recalling that assessment.
+It runs independently of the scheduled model-scoring and email pipeline.
+
+```bash
+python owned_research.py --inventory examples/owned_inventory.json \
+  --candidates examples/owned_candidates.json \
+  --markdown .local-research/comparison.md
+python owned_research.py --recall
+python -m unittest tests.test_owned_research -v
+```
+
+The examples are synthetic. Replace them with an authorised inventory snapshot
+and candidates. Each inventory requires a timezone-aware `observed_at`, an
+explicit `complete` boolean and `repositories` with `full_name` identities.
+Fork records can include `parent_full_name` and `source_full_name`. Explicit
+`capabilities` labels allow overlap comparisons; they do not prove equivalence.
+
+Exact identities and fork ancestry establish repository presence. Incomplete
+coverage or missing fork ancestry cannot establish absence. Presence never
+establishes installation, runtime activation or performance.
+
+Assessments append to an `ownership_runs` table in the local SQLite database
+(`.local-research/research_agent.db` by default). A new process can recover the
+latest report with `--recall`; existing scored-repository tables are preserved.
+The saved assessment includes the observation time and a digest of both inputs.
+Keep original inputs for reproduction. This command reads supplied snapshots;
+it does not automatically refresh GitHub or change ChatGPT memory. Private
+inputs and results belong in the ignored `.local-research/` directory.
+
