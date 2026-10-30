@@ -191,7 +191,8 @@ Keep original inputs for reproduction. This command reads supplied snapshots;
 it does not automatically refresh GitHub or change ChatGPT memory. Private
 inputs and results belong in the ignored `.local-research/` directory.
 On POSIX systems the command restricts both new and reused database and Markdown
-files, including existing SQLite sidecars, to owner-only access. Markdown exports cannot overwrite input snapshots
-or the database. JSON inputs and Markdown reports use UTF-8; JSON stdout escapes
+files, including existing SQLite sidecars, to owner-only access. Markdown exports
+cannot overwrite input snapshots, the database or its SQLite sidecars, including
+paths that alias those files. JSON inputs and Markdown reports use UTF-8; JSON stdout escapes
 non-ASCII characters so it remains usable under a non-UTF-8 terminal locale.
 

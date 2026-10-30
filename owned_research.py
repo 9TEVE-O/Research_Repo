@@ -200,14 +200,18 @@ def main(argv=None):
     parser.add_argument("--markdown", type=Path)
     args = parser.parse_args(argv)
     try:
-        # An export must never overwrite the database or its source inputs.
+        # Protect SQLite's live transaction files as well as the database.
         if args.markdown:
-            for source in (args.database, args.inventory, args.candidates):
+            sources = [args.database, args.inventory, args.candidates]
+            for database in (args.database, args.database.resolve()):
+                sources.extend(Path(str(database) + suffix)
+                               for suffix in ("-wal", "-shm", "-journal"))
+            for source in sources:
                 if source is not None and (
                     args.markdown.resolve() == source.resolve()
                     or (args.markdown.exists() and source.exists() and args.markdown.samefile(source))
                 ):
-                    raise ValueError("--markdown must differ from the database and input paths")
+                    raise ValueError("--markdown must differ from the database, SQLite sidecars and input paths")
         if args.recall:
             if args.inventory or args.candidates:
                 raise ValueError("--recall cannot accept new inputs")

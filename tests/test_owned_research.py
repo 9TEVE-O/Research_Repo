@@ -259,6 +259,58 @@ class OwnedResearchTests(unittest.TestCase):
             self.assertEqual(result.returncode, 2, result.stderr)
             self.assertEqual(target.read_text(encoding="utf-8"), "retained")
 
+    def test_markdown_cannot_use_reserved_database_sidecar_paths(self):
+        with tempfile.TemporaryDirectory() as root:
+            self.assertEqual(self.run_cli(root).returncode, 0)
+            db = Path(root) / "memory.db"
+            before = db.read_bytes()
+            for suffix in ("-wal", "-shm", "-journal"):
+                with self.subTest(suffix=suffix):
+                    output = Path(str(db) + suffix)
+                    self.assertFalse(output.exists())
+                    result = self.run_cli(root, "--markdown", str(output))
+                    self.assertEqual(result.returncode, 2, result.stderr)
+                    self.assertFalse(output.exists())
+                    self.assertEqual(db.read_bytes(), before)
+
+    @unittest.skipUnless(os.name == "posix", "POSIX link semantics")
+    def test_markdown_sidecar_aliases_preserve_active_wal(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            self.assertEqual(self.run_cli(root).returncode, 0)
+            db = root / "memory.db"
+            conn = sqlite3.connect(db)
+            try:
+                conn.execute("PRAGMA journal_mode=WAL")
+                conn.execute("PRAGMA wal_autocheckpoint=0")
+                conn.execute("CREATE TABLE retained (value TEXT)")
+                conn.execute("INSERT INTO retained VALUES ('original')")
+                conn.commit()
+                wal = Path(str(db) + "-wal")
+                before = wal.read_bytes()
+                symlink = root / "symlink.md"
+                symlink.symlink_to(wal)
+                hardlink = root / "hardlink.md"
+                os.link(wal, hardlink)
+                database_alias = root / "alias.db"
+                database_alias.symlink_to(db)
+                for output in (wal, symlink, hardlink):
+                    for database in (db, database_alias):
+                        with self.subTest(output=output.name, database=database.name):
+                            result = self.run_cli(root, "--database", str(database),
+                                                  "--markdown", str(output))
+                            self.assertEqual(result.returncode, 2, result.stderr)
+                            self.assertEqual(wal.read_bytes(), before)
+                            reader = sqlite3.connect(db)
+                            try:
+                                self.assertEqual(reader.execute("SELECT value FROM retained").fetchall(),
+                                                 [("original",)])
+                                self.assertEqual(reader.execute("SELECT count(*) FROM ownership_runs").fetchone()[0], 1)
+                            finally:
+                                reader.close()
+            finally:
+                conn.close()
+
 
 if __name__ == "__main__":
     unittest.main()
