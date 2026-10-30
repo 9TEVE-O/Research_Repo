@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 import re
 import sqlite3
+import sys
 import stat
 from urllib.parse import urlsplit
 
@@ -205,17 +206,24 @@ def remember(db_path, report):
         return cursor.lastrowid
 
 
-def recall(db_path):
-    """Read the last completed report; opening a missing database is an error."""
+def recall(db_path, assessment_id=None):
+    """Read the latest or a specific saved assessment without creating a database."""
+    if assessment_id is not None and (type(assessment_id) is not int or assessment_id < 1):
+        raise ValueError("assessment ID must be a positive integer")
     path = Path(db_path)
     if not path.is_file():
         raise ValueError("no saved research memory at this path")
     with closing(sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)) as conn:
         try:
-            row = conn.execute("SELECT report_json FROM ownership_runs ORDER BY id DESC LIMIT 1").fetchone()
+            if assessment_id is None:
+                row = conn.execute("SELECT report_json FROM ownership_runs ORDER BY id DESC LIMIT 1").fetchone()
+            else:
+                row = conn.execute("SELECT report_json FROM ownership_runs WHERE id = ?", (assessment_id,)).fetchone()
         except sqlite3.OperationalError as exc:
             raise ValueError("no ownership memory in this database") from exc
     if row is None:
+        if assessment_id is not None:
+            raise ValueError(f"no saved research assessment with ID {assessment_id}")
         raise ValueError("no saved research report")
     return json.loads(row[0])
 
@@ -243,9 +251,16 @@ def main(argv=None):
     parser.add_argument("--candidates", type=Path)
     parser.add_argument("--database", type=Path, default=Path(".local-research/research_agent.db"))
     parser.add_argument("--recall", action="store_true")
+    parser.add_argument("--assessment-id", type=int, help="retrieve this existing ID with --recall")
+    parser.add_argument("--emit-assessment-id", action="store_true",
+                        help="print the new saved ID to stderr; JSON stdout is unchanged")
     parser.add_argument("--markdown", type=Path)
     args = parser.parse_args(argv)
     try:
+        if args.assessment_id is not None and not args.recall:
+            raise ValueError("--assessment-id requires --recall")
+        if args.emit_assessment_id and args.recall:
+            raise ValueError("--emit-assessment-id requires a new assessment")
         # Protect SQLite's live transaction files as well as the database.
         if args.markdown:
             sources = [args.database, args.inventory, args.candidates]
@@ -261,13 +276,15 @@ def main(argv=None):
         if args.recall:
             if args.inventory or args.candidates:
                 raise ValueError("--recall cannot accept new inputs")
-            report = recall(args.database)
+            report = recall(args.database, args.assessment_id)
         else:
             if not args.inventory or not args.candidates:
                 raise ValueError("--inventory and --candidates are required")
             report = assess(json.loads(args.inventory.read_text(encoding="utf-8")),
                             json.loads(args.candidates.read_text(encoding="utf-8")))
-            remember(args.database, report)
+            saved_id = remember(args.database, report)
+            if args.emit_assessment_id:
+                print(f"assessment_id={saved_id}", file=sys.stderr)
         if args.markdown:
             args.markdown.parent.mkdir(parents=True, exist_ok=True)
             rendered = markdown(report)
