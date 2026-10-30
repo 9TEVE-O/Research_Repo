@@ -202,12 +202,17 @@ def main(argv=None):
     try:
         # An export must never overwrite the database or its source inputs.
         if args.markdown:
-            for source in (args.database, args.inventory, args.candidates):
+            # SQLite may hold uncheckpointed rows in WAL sidecars. An export to
+            # any of these paths can truncate or corrupt saved research memory.
+            protected = [args.database, args.inventory, args.candidates]
+            protected.extend(Path(str(args.database) + suffix)
+                             for suffix in ("-wal", "-shm", "-journal"))
+            for source in protected:
                 if source is not None and (
                     args.markdown.resolve() == source.resolve()
                     or (args.markdown.exists() and source.exists() and args.markdown.samefile(source))
                 ):
-                    raise ValueError("--markdown must differ from the database and input paths")
+                    raise ValueError("--markdown must differ from the database, SQLite sidecars and input paths")
         if args.recall:
             if args.inventory or args.candidates:
                 raise ValueError("--recall cannot accept new inputs")
