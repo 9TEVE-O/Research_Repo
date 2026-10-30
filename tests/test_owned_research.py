@@ -119,7 +119,7 @@ class OwnedResearchTests(unittest.TestCase):
             self.assertEqual(recall(db, first_id), first)
             self.assertEqual(recall(db, second_id), second)
             self.assertEqual(recall(db), second)
-            for invalid in (0, -1, True, "1"):
+            for invalid in (0, -1, True, "1", 9223372036854775808):
                 with self.subTest(invalid=invalid), self.assertRaises(ValueError):
                     recall(db, invalid)
             with self.assertRaisesRegex(ValueError, "ID 9999"):
