@@ -220,10 +220,11 @@ def main(argv=None):
             remember(args.database, report)
         if args.markdown:
             args.markdown.parent.mkdir(parents=True, exist_ok=True)
+            rendered = markdown(report)
             descriptor = private_file(args.markdown)
             with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
                 handle.truncate(0)
-                handle.write(markdown(report))
+                handle.write(rendered)
         # ASCII JSON escapes also work when the terminal locale is not UTF-8.
         print(json.dumps(report, indent=2))
     except (ValueError, KeyError, TypeError, OSError, sqlite3.Error) as exc:
