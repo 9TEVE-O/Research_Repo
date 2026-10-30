@@ -109,6 +109,58 @@ class OwnedResearchTests(unittest.TestCase):
                 self.assertEqual(conn.execute("SELECT count(*) FROM ownership_runs").fetchone()[0], 2)
                 self.assertEqual(conn.execute("SELECT value FROM scored_repos").fetchone()[0], "retained")
 
+    def test_recall_specific_id_preserves_latest_legacy_and_missing_id(self):
+        with tempfile.TemporaryDirectory() as root:
+            db = Path(root) / "memory.db"
+            first = assess(self.inventory(), [{"full_name": "me/first"}])
+            second = assess(self.inventory(), [{"full_name": "me/second"}])
+            first_id = remember(db, first)
+            second_id = remember(db, second)
+            self.assertEqual(recall(db, first_id), first)
+            self.assertEqual(recall(db, second_id), second)
+            self.assertEqual(recall(db), second)
+            for invalid in (0, -1, True, "1", 9223372036854775808):
+                with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                    recall(db, invalid)
+            with self.assertRaisesRegex(ValueError, "ID 9999"):
+                recall(db, 9999)
+            self.assertEqual(recall(db), second)
+
+    def test_cli_recall_by_id_and_opt_in_receipt_across_processes(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            db = root / "memory.db"
+            inv = root / "inventory.json"
+            candidates = root / "candidates.json"
+            inv.write_text(json.dumps(self.inventory()), encoding="utf-8")
+            candidates.write_text(json.dumps([{"full_name": "me/first"}]), encoding="utf-8")
+            cmd = [sys.executable, str(Path(__file__).resolve().parents[1] / "owned_research.py")]
+            saved = subprocess.run(cmd + ["--inventory", str(inv), "--candidates", str(candidates),
+                                          "--database", str(db), "--emit-assessment-id"],
+                                   capture_output=True, text=True, check=True)
+            self.assertIn("assessment_id=1", saved.stderr)
+            first_report = json.loads(saved.stdout)
+            candidates.write_text(json.dumps([{"full_name": "me/second"}]), encoding="utf-8")
+            saved2 = subprocess.run(cmd + ["--inventory", str(inv), "--candidates", str(candidates),
+                                           "--database", str(db), "--emit-assessment-id"],
+                                    capture_output=True, text=True, check=True)
+            self.assertIn("assessment_id=2", saved2.stderr)
+            retrieved = subprocess.run(cmd + ["--recall", "--assessment-id", "1", "--database", str(db)],
+                                       capture_output=True, text=True, check=True)
+            self.assertEqual(json.loads(retrieved.stdout), first_report)
+            latest = subprocess.run(cmd + ["--recall", "--database", str(db)],
+                                    capture_output=True, text=True, check=True)
+            self.assertEqual(json.loads(latest.stdout), json.loads(saved2.stdout))
+            unknown = subprocess.run(cmd + ["--recall", "--assessment-id", "9999", "--database", str(db)],
+                                     capture_output=True, text=True)
+            self.assertEqual(unknown.returncode, 2)
+            self.assertIn("ID 9999", unknown.stderr)
+            self.assertFalse(unknown.stdout)
+            invalid = subprocess.run(cmd + ["--assessment-id", "1", "--database", str(db)],
+                                     capture_output=True, text=True)
+            self.assertEqual(invalid.returncode, 2)
+            self.assertIn("requires --recall", invalid.stderr)
+
     def test_missing_recall_does_not_create_database(self):
         with tempfile.TemporaryDirectory() as root:
             db = Path(root) / "missing.db"

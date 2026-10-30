@@ -186,6 +186,10 @@ establishes installation, runtime activation or performance.
 Assessments append to an `ownership_runs` table in the local SQLite database
 (`.local-research/research_agent.db` by default). A new process can recover the
 latest report with `--recall`; existing scored-repository tables are preserved.
+To retrieve an earlier report, use `--recall --assessment-id 1` (or any saved
+positive ID). An unknown ID fails without silently substituting the latest report.
+Opt in to a receipt for new assessments with `--emit-assessment-id`; it writes
+`assessment_id=N` to stderr while leaving the JSON report on stdout unchanged.
 The saved assessment includes the observation time and a digest of both inputs.
 Keep original inputs for reproduction. This command reads supplied snapshots;
 it does not automatically refresh GitHub or change ChatGPT memory. Private
