@@ -208,7 +208,7 @@ def remember(db_path, report):
 
 def recall(db_path, assessment_id=None):
     """Read the latest or a specific saved assessment without creating a database."""
-    if assessment_id is not None and (type(assessment_id) is not int or assessment_id < 1):
+    if assessment_id is not None and (type(assessment_id) is not int or not 1 <= assessment_id <= 9223372036854775807):
         raise ValueError("assessment ID must be a positive integer")
     path = Path(db_path)
     if not path.is_file():
