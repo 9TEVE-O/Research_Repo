@@ -248,6 +248,27 @@ class OwnedResearchTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 2, result.stderr)
                 self.assertEqual(path.read_bytes(), before)
 
+    def test_markdown_rejects_sqlite_sidecars_without_modifying_memory(self):
+        with tempfile.TemporaryDirectory() as root:
+            self.assertEqual(self.run_cli(root).returncode, 0)
+            db = Path(root) / "memory.db"
+            with sqlite3.connect(db) as conn:
+                self.assertEqual(conn.execute("PRAGMA journal_mode=WAL").fetchone()[0], "wal")
+                conn.execute("CREATE TABLE intact (value TEXT)")
+                conn.execute("INSERT INTO intact VALUES ('retained')")
+                conn.commit()
+                for suffix in ("-wal", "-shm", "-journal"):
+                    sidecar = Path(str(db) + suffix)
+                    before = sidecar.read_bytes() if sidecar.exists() else None
+                    result = self.run_cli(root, "--markdown", str(sidecar))
+                    self.assertEqual(result.returncode, 2, result.stderr)
+                    self.assertIn(b"SQLite sidecars", result.stderr)
+                    after = sidecar.read_bytes() if sidecar.exists() else None
+                    self.assertEqual(after, before)
+                self.assertEqual(conn.execute("SELECT value FROM intact").fetchone()[0], "retained")
+            with sqlite3.connect(db) as conn:
+                self.assertEqual(conn.execute("SELECT value FROM intact").fetchone()[0], "retained")
+
     @unittest.skipUnless(hasattr(os, "O_NOFOLLOW"), "requires no-follow open support")
     def test_markdown_symlink_does_not_truncate_target(self):
         with tempfile.TemporaryDirectory() as root:
