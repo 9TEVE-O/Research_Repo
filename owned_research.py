@@ -5,6 +5,7 @@ Inventory presence does not establish installation or successful execution.
 """
 
 import argparse
+from contextlib import closing
 from datetime import datetime, timezone
 import hashlib
 import html
@@ -13,6 +14,7 @@ import os
 from pathlib import Path
 import re
 import sqlite3
+import stat
 from urllib.parse import urlsplit
 
 
@@ -76,9 +78,11 @@ def assess(inventory, candidates):
         for identity in ancestry:
             if identity:
                 identities.add(repo_id(identity))
-        # A parent-only record cannot establish absence of a different root
-        # source; a source-only record may omit an immediate parent identity.
-        if fork is not False and not all(ancestry):
+        # Parent and root identify the whole chain only for a direct fork.
+        # A multi-hop fork may have unresolved ancestors between those two.
+        if fork is not False and (
+            not all(ancestry) or repo_id(ancestry[0]) != repo_id(ancestry[1])
+        ):
             ancestry_complete = False
         indexed.append((record, name, identities, capabilities(record)))
 
@@ -114,19 +118,38 @@ def assess(inventory, candidates):
             "boundary": "Repository presence and capability overlap do not establish installation, equivalence or performance."}
 
 
+def private_file(path, *, create=True):
+    """Open a regular output without following symlinks or truncating it yet."""
+    flags = os.O_WRONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+    if create:
+        flags |= os.O_CREAT
+    descriptor = os.open(path, flags, 0o600)
+    try:
+        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+            raise ValueError("output must be a regular file")
+        if os.name == "posix":
+            os.fchmod(descriptor, 0o600)
+        return descriptor
+    except BaseException:
+        os.close(descriptor)
+        raise
+
+
 def remember(db_path, report):
     """Append a report to SQLite without changing the existing scored_repos table."""
     path = Path(db_path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    # Inventories can include private repository names. Create a new database
-    # with owner-only permissions rather than inheriting a permissive umask.
-    try:
-        descriptor = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-    except FileExistsError:
-        pass
-    else:
+    # Restrict both new and reused databases before writing private identities.
+    os.close(private_file(path))
+    # A reused WAL database can have existing sidecars with broader permissions
+    # than its main file. SQLite retains their modes when appending new data.
+    for suffix in ("-wal", "-shm", "-journal"):
+        try:
+            descriptor = private_file(Path(str(path) + suffix), create=False)
+        except FileNotFoundError:
+            continue
         os.close(descriptor)
-    with sqlite3.connect(path) as conn:
+    with closing(sqlite3.connect(path)) as conn, conn:
         conn.execute("""CREATE TABLE IF NOT EXISTS ownership_runs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             saved_at TEXT NOT NULL, input_sha256 TEXT NOT NULL, report_json TEXT NOT NULL)""")
@@ -141,7 +164,7 @@ def recall(db_path):
     path = Path(db_path)
     if not path.is_file():
         raise ValueError("no saved research memory at this path")
-    with sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True) as conn:
+    with closing(sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)) as conn:
         try:
             row = conn.execute("SELECT report_json FROM ownership_runs ORDER BY id DESC LIMIT 1").fetchone()
         except sqlite3.OperationalError as exc:
@@ -177,6 +200,14 @@ def main(argv=None):
     parser.add_argument("--markdown", type=Path)
     args = parser.parse_args(argv)
     try:
+        # An export must never overwrite the database or its source inputs.
+        if args.markdown:
+            for source in (args.database, args.inventory, args.candidates):
+                if source is not None and (
+                    args.markdown.resolve() == source.resolve()
+                    or (args.markdown.exists() and source.exists() and args.markdown.samefile(source))
+                ):
+                    raise ValueError("--markdown must differ from the database and input paths")
         if args.recall:
             if args.inventory or args.candidates:
                 raise ValueError("--recall cannot accept new inputs")
@@ -184,12 +215,17 @@ def main(argv=None):
         else:
             if not args.inventory or not args.candidates:
                 raise ValueError("--inventory and --candidates are required")
-            report = assess(json.loads(args.inventory.read_text()), json.loads(args.candidates.read_text()))
+            report = assess(json.loads(args.inventory.read_text(encoding="utf-8")),
+                            json.loads(args.candidates.read_text(encoding="utf-8")))
             remember(args.database, report)
         if args.markdown:
             args.markdown.parent.mkdir(parents=True, exist_ok=True)
-            args.markdown.write_text(markdown(report), encoding="utf-8")
-        print(json.dumps(report, indent=2, ensure_ascii=False))
+            descriptor = private_file(args.markdown)
+            with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+                handle.truncate(0)
+                handle.write(markdown(report))
+        # ASCII JSON escapes also work when the terminal locale is not UTF-8.
+        print(json.dumps(report, indent=2))
     except (ValueError, KeyError, TypeError, OSError, sqlite3.Error) as exc:
         parser.exit(2, f"owned_research: {exc}\n")
 

@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from owned_research import assess, markdown, recall, remember, repo_id
 
@@ -42,6 +43,18 @@ class OwnedResearchTests(unittest.TestCase):
                          {"source_full_name": "original/tool"}]:
             inv = self.inventory([{"full_name": "me/tool", "fork": True, **ancestry}])
             self.assertEqual(self.result(inv, "other/tool")["ownership"], "UNKNOWN")
+
+    def test_multi_hop_fork_preserves_unknown_intermediate(self):
+        inv = self.inventory([{"full_name": "me/tool", "fork": True,
+                               "parent_full_name": "parent/tool", "source_full_name": "root/tool"}])
+        self.assertEqual(self.result(inv, "intermediate/tool")["ownership"], "UNKNOWN")
+        for known in ["parent/tool", "root/tool"]:
+            self.assertEqual(self.result(inv, known)["ownership"], "PRESENT")
+
+    def test_direct_fork_can_establish_snapshot_absence(self):
+        inv = self.inventory([{"full_name": "me/tool", "fork": True,
+                               "parent_full_name": "Root/Tool", "source_full_name": "root/tool"}])
+        self.assertEqual(self.result(inv, "other/tool")["ownership"], "NOT_IN_SNAPSHOT")
 
     def test_contradictory_fork_metadata_rejected(self):
         inv = self.inventory([{"full_name": "me/tool", "fork": False,
@@ -114,6 +127,59 @@ class OwnedResearchTests(unittest.TestCase):
                 os.umask(previous)
             self.assertEqual(db.stat().st_mode & 0o777, 0o600)
 
+    @unittest.skipUnless(os.name == "posix", "POSIX permission semantics")
+    def test_reused_memory_database_is_made_private(self):
+        with tempfile.TemporaryDirectory() as root:
+            db = Path(root) / "existing.db"
+            db.touch(mode=0o644)
+            db.chmod(0o644)
+            remember(db, assess(self.inventory(), []))
+            self.assertEqual(db.stat().st_mode & 0o777, 0o600)
+
+    @unittest.skipUnless(os.name == "posix", "POSIX permission semantics")
+    def test_existing_wal_sidecars_are_private_before_append(self):
+        with tempfile.TemporaryDirectory() as root:
+            db = Path(root) / "existing.db"
+            conn = sqlite3.connect(db)
+            try:
+                conn.execute("PRAGMA journal_mode=WAL")
+                conn.execute("CREATE TABLE existing (value TEXT)")
+                conn.execute("INSERT INTO existing VALUES ('retained')")
+                conn.commit()
+                sidecars = [Path(str(db) + suffix) for suffix in ("-wal", "-shm")]
+                for path in sidecars:
+                    path.chmod(0o644)
+                report = assess(self.inventory(), [{"full_name": "me/tool"}])
+                remember(db, report)
+                for path in sidecars:
+                    self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+                self.assertEqual(recall(db), report)
+                self.assertEqual(conn.execute("SELECT value FROM existing").fetchone()[0], "retained")
+                self.assertEqual(conn.execute("PRAGMA journal_mode").fetchone()[0], "wal")
+            finally:
+                conn.close()
+
+    def test_database_connections_are_closed(self):
+        real_connect = sqlite3.connect
+        closed = []
+
+        class TrackedConnection(sqlite3.Connection):
+            def close(self):
+                closed.append(self)
+                super().close()
+
+        def connect(*args, **kwargs):
+            return real_connect(*args, **kwargs, factory=TrackedConnection)
+
+        with tempfile.TemporaryDirectory() as root:
+            db = Path(root) / "memory.db"
+            with patch("owned_research.sqlite3.connect", side_effect=connect):
+                remember(db, assess(self.inventory(), []))
+                recall(db)
+                with self.assertRaises(KeyError):
+                    remember(db, {})
+            self.assertEqual(len(closed), 3)
+
     def test_markdown_escapes_supplied_time_text(self):
         report = assess(self.inventory(), [])
         report["observed_at"] = "<script>|\n"
@@ -134,6 +200,64 @@ class OwnedResearchTests(unittest.TestCase):
             restored = subprocess.run(command + ["--recall", "--database", str(db)],
                                       env=env, capture_output=True, text=True, check=True)
             self.assertEqual(json.loads(written.stdout), json.loads(restored.stdout))
+
+    def run_cli(self, root, *options, extra_env=None):
+        root = Path(root)
+        inv, candidates, db = root / "inventory.json", root / "candidates.json", root / "memory.db"
+        if not inv.exists():
+            inventory = self.inventory([{"full_name": "me/tool", "fork": False,
+                                        "capabilities": ["mémoire"], "capability_evidence": "日本語"}])
+            inv.write_text(json.dumps(inventory, ensure_ascii=False), encoding="utf-8")
+            candidates.write_text(json.dumps([{"full_name": "me/tool", "capabilities": ["mémoire"]}],
+                                             ensure_ascii=False), encoding="utf-8")
+        command = [sys.executable, str(Path(__file__).resolve().parents[1] / "owned_research.py"),
+                   "--inventory", str(inv), "--candidates", str(candidates), "--database", str(db), *options]
+        env = {"PATH": os.environ.get("PATH", ""), **(extra_env or {})}
+        return subprocess.run(command, env=env, capture_output=True)
+
+    def test_cli_utf8_inputs_under_ascii_locale(self):
+        with tempfile.TemporaryDirectory() as root:
+            result = self.run_cli(root, extra_env={"LC_ALL": "C", "PYTHONUTF8": "0",
+                                                   "PYTHONCOERCECLOCALE": "0"})
+            self.assertEqual(result.returncode, 0, result.stderr)
+            decoded = json.loads(result.stdout)
+            self.assertEqual(decoded["results"][0]["capability_overlap"][0]["evidence"], "日本語")
+
+    @unittest.skipUnless(os.name == "posix", "POSIX permission semantics")
+    def test_markdown_new_and_reused_outputs_are_private(self):
+        with tempfile.TemporaryDirectory() as root:
+            output = Path(root) / "comparison.md"
+            result = self.run_cli(root, "--markdown", str(output))
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(output.stat().st_mode & 0o777, 0o600)
+            output.write_text("stale" * 10000, encoding="utf-8")
+            output.chmod(0o644)
+            result = self.run_cli(root, "--markdown", str(output))
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(output.stat().st_mode & 0o777, 0o600)
+            self.assertTrue(output.read_text(encoding="utf-8").endswith("NOT_ESTABLISHED for all entries.\n"))
+            self.assertNotIn("stalestale", output.read_text(encoding="utf-8"))
+
+    def test_markdown_cannot_overwrite_inputs_or_database(self):
+        with tempfile.TemporaryDirectory() as root:
+            self.assertEqual(self.run_cli(root).returncode, 0)
+            for name in ["inventory.json", "candidates.json", "memory.db"]:
+                path = Path(root) / name
+                before = path.read_bytes()
+                result = self.run_cli(root, "--markdown", str(path))
+                self.assertEqual(result.returncode, 2, result.stderr)
+                self.assertEqual(path.read_bytes(), before)
+
+    @unittest.skipUnless(hasattr(os, "O_NOFOLLOW"), "requires no-follow open support")
+    def test_markdown_symlink_does_not_truncate_target(self):
+        with tempfile.TemporaryDirectory() as root:
+            target = Path(root) / "unrelated.txt"
+            target.write_text("retained", encoding="utf-8")
+            output = Path(root) / "comparison.md"
+            output.symlink_to(target)
+            result = self.run_cli(root, "--markdown", str(output))
+            self.assertEqual(result.returncode, 2, result.stderr)
+            self.assertEqual(target.read_text(encoding="utf-8"), "retained")
 
 
 if __name__ == "__main__":

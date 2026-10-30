@@ -174,7 +174,9 @@ python -m unittest tests.test_owned_research -v
 The examples are synthetic. Replace them with an authorised inventory snapshot
 and candidates. Each inventory requires a timezone-aware `observed_at`, an
 explicit `complete` boolean and `repositories` with `full_name` identities.
-Fork records can include `parent_full_name` and `source_full_name`. Explicit
+Fork records can include `parent_full_name` and `source_full_name`. An immediate
+parent and a different root do not resolve intermediate ancestors, so unmatched
+candidates remain `UNKNOWN` for those inventories. Explicit
 `capabilities` labels allow overlap comparisons; they do not prove equivalence.
 
 Exact identities and fork ancestry establish repository presence. Incomplete
@@ -188,4 +190,8 @@ The saved assessment includes the observation time and a digest of both inputs.
 Keep original inputs for reproduction. This command reads supplied snapshots;
 it does not automatically refresh GitHub or change ChatGPT memory. Private
 inputs and results belong in the ignored `.local-research/` directory.
+On POSIX systems the command restricts both new and reused database and Markdown
+files, including existing SQLite sidecars, to owner-only access. Markdown exports cannot overwrite input snapshots
+or the database. JSON inputs and Markdown reports use UTF-8; JSON stdout escapes
+non-ASCII characters so it remains usable under a non-UTF-8 terminal locale.
 
