@@ -1,0 +1,4 @@
+[
+  {"full_name": "example-upstream/memory", "capabilities": ["memory"]},
+  {"full_name": "example-alternative/recall", "capabilities": ["memory"]}
+]

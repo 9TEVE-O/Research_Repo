@@ -1,0 +1,14 @@
+{
+  "observed_at": "2026-10-30T00:00:00Z",
+  "complete": false,
+  "repositories": [
+    {
+      "full_name": "example-user/local-memory",
+      "fork": true,
+      "parent_full_name": "example-upstream/memory",
+      "source_full_name": "example-upstream/memory",
+      "capabilities": ["memory"],
+      "capability_evidence": "Synthetic fixture only"
+    }
+  ]
+}
