@@ -135,6 +135,52 @@ def private_file(path, *, create=True):
         raise
 
 
+
+def private_markdown_file(path, protected_sources):
+    """Open a Markdown destination without following replaceable parent symlinks.
+
+    The file is opened by descriptor-anchored traversal and checked against
+    protected input/database inodes *after* opening but before truncation.
+    Unsupported platforms fail closed rather than silently using an unsafe open.
+    """
+    if (os.name != "posix" or os.open not in os.supports_dir_fd
+            or not getattr(os, "O_DIRECTORY", 0) or not getattr(os, "O_NOFOLLOW", 0)):
+        raise ValueError("secure Markdown export requires POSIX no-follow directory opens")
+    path = Path(os.path.abspath(path))
+    directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    directory = os.open(path.anchor, directory_flags)
+    try:
+        for component in path.parent.parts[1:]:
+            child = os.open(component, directory_flags, dir_fd=directory)
+            os.close(directory)
+            directory = child
+        descriptor = os.open(
+            path.name,
+            os.O_WRONLY | os.O_CREAT | os.O_NOFOLLOW | getattr(os, "O_NONBLOCK", 0),
+            0o600, dir_fd=directory,
+        )
+    finally:
+        os.close(directory)
+    try:
+        opened = os.fstat(descriptor)
+        if not stat.S_ISREG(opened.st_mode):
+            raise ValueError("output must be a regular file")
+        # An alias may be introduced after the earlier path-based check.
+        for source in protected_sources:
+            if source is None:
+                continue
+            try:
+                target = os.stat(source)
+            except FileNotFoundError:
+                continue
+            if (opened.st_dev, opened.st_ino) == (target.st_dev, target.st_ino):
+                raise ValueError("Markdown output aliases a protected database or input")
+        os.fchmod(descriptor, 0o600)
+        return descriptor
+    except BaseException:
+        os.close(descriptor)
+        raise
+
 def remember(db_path, report):
     """Append a report to SQLite without changing the existing scored_repos table."""
     path = Path(db_path)
@@ -200,14 +246,18 @@ def main(argv=None):
     parser.add_argument("--markdown", type=Path)
     args = parser.parse_args(argv)
     try:
-        # An export must never overwrite the database or its source inputs.
+        # Protect SQLite's live transaction files as well as the database.
         if args.markdown:
-            for source in (args.database, args.inventory, args.candidates):
+            sources = [args.database, args.inventory, args.candidates]
+            for database in (args.database, args.database.resolve()):
+                sources.extend(Path(str(database) + suffix)
+                               for suffix in ("-wal", "-shm", "-journal"))
+            for source in sources:
                 if source is not None and (
                     args.markdown.resolve() == source.resolve()
                     or (args.markdown.exists() and source.exists() and args.markdown.samefile(source))
                 ):
-                    raise ValueError("--markdown must differ from the database and input paths")
+                    raise ValueError("--markdown must differ from the database, SQLite sidecars and input paths")
         if args.recall:
             if args.inventory or args.candidates:
                 raise ValueError("--recall cannot accept new inputs")
@@ -221,7 +271,7 @@ def main(argv=None):
         if args.markdown:
             args.markdown.parent.mkdir(parents=True, exist_ok=True)
             rendered = markdown(report)
-            descriptor = private_file(args.markdown)
+            descriptor = private_markdown_file(args.markdown, sources)
             with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
                 handle.truncate(0)
                 handle.write(rendered)
