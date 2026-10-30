@@ -19,5 +19,11 @@ jobs:
       - name: Install test dependencies
         run: pip install --require-hashes -r requirements-dev.lock
 
+      - name: Compile Python source and tests
+        run: python -m compileall -q .
+
+      - name: Run owned-research SQLite and Markdown regressions
+        run: python -m pytest -q tests/test_owned_research.py -k markdown
+
       - name: Run tests
         run: python -m pytest -q
