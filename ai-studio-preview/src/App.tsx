@@ -7,6 +7,7 @@ import { ReportViewer } from "./components/ReportViewer";
 import { GuardrailsViewer } from "./components/GuardrailsViewer";
 import { GlobalSearchBar } from "./components/GlobalSearchBar";
 import { FirebaseProvider, useFirebase, ActiveTab } from "./context/FirebaseContext";
+import { FIREBASE_ENABLED } from "./firebase";
 import {
   Terminal,
   GitPullRequest,
@@ -123,7 +124,7 @@ function AppShell() {
                 </button>
               )}
 
-              {authReady && (
+              {FIREBASE_ENABLED && authReady && (
                 user ? (
                   <div className="flex items-center gap-2">
                     <span className="hidden xl:inline text-[11px] text-[#999] truncate max-w-[120px]">
@@ -192,6 +193,10 @@ function AppShell() {
           </div>
         </div>
       </header>
+
+      <div role="status" className="border-b border-amber-700/50 bg-amber-950/30 px-4 py-2 text-center text-xs text-amber-200">
+        REVIEW ONLY · Simulated research data; no verified citations, live search, provider scores or model evaluations. Firebase disconnected.
+      </div>
 
       {/* Main Content Area */}
       <main className="flex-1">
@@ -331,7 +336,7 @@ function AppShell() {
           <div className="flex items-center gap-4 text-[11px]">
             <span>arXiv · MIT · Harvard · IEEE · ACM</span>
             <span>·</span>
-            <span>Firebase Auth & Firestore</span>
+            <span>Firebase disconnected · review only</span>
             <span>·</span>
             <span>MIT License</span>
           </div>

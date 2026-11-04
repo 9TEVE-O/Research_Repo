@@ -92,15 +92,15 @@ export const AcademicTerminal: React.FC<AcademicTerminalProps> = ({ globalQuery 
     await addCustomPaper({
       topic: targetTopic,
       topicLabel,
-      title: `Recent Advances in ${q}: Empirical Benchmark and Architecture Evaluation`,
-      authors: "A. Vaswani, D. Sculley, et al.",
-      source: "arXiv",
-      date: "2026-02-14",
-      abstract: `A comprehensive evaluation targeting ${q} with formal empirical bounds, zero-shot benchmarks, and architectural comparative metrics across distributed compute clusters.`,
+      title: `Synthetic sample topic: ${q} (not a publication)`,
+      authors: "Synthetic example; no authors verified",
+      source: "Synthetic example (not arXiv)",
+      date: "Not verified",
+      abstract: `Synthetic sample record for ${q}. No paper retrieval or verification was performed.`,
       url: `https://arxiv.org/search/?query=${encodeURIComponent(q)}&searchtype=all`,
-      tags: [q.toLowerCase().replace(/\s+/g, "-"), "empirical-study", "2026-benchmark"],
-      citations: 12,
-      doi: `10.48550/arXiv.${Math.floor(2600 + Math.random() * 90)}.${Math.floor(1000 + Math.random() * 8999)}`,
+      tags: [q.toLowerCase().replace(/\s+/g, "-"), "synthetic-data", "not-verified"],
+      citations: 0,
+      doi: "",
     });
 
     setCustomQuery("");
@@ -116,8 +116,9 @@ export const AcademicTerminal: React.FC<AcademicTerminalProps> = ({ globalQuery 
   title={${paper.title}},
   author={${paper.authors}},
   journal={${paper.source}},
-  year={${paper.date.match(/\d{4}/)?.[0] || "2026"}},
-  url={${paper.url}}
+  year={${paper.date.match(/\d{4}/)?.[0] || "unknown"}},
+  url={${paper.url}},
+  note={UNVERIFIED SYNTHETIC DEMO RECORD: not a validated bibliographic citation}
 }`;
     navigator.clipboard.writeText(bibtex);
     setCopiedId(paper.id);
@@ -169,7 +170,10 @@ export const AcademicTerminal: React.FC<AcademicTerminalProps> = ({ globalQuery 
             Academic Paper Intelligence
           </h1>
           <p className="text-[#888] text-xs sm:text-sm mt-1 tracking-wider">
-            Live retrieval, citation extraction, and cross-domain literature synthesis
+            Synthetic data demonstration. No live retrieval or verified citations.
+          </p>
+          <p role="status" className="mt-3 rounded border border-amber-700/50 bg-amber-950/30 p-3 text-xs text-amber-200">
+            SYNTHETIC DATA · Preloaded paper records are examples, not independently verified publications. Generated examples are not scholarly citations. No academic search provider is contacted.
           </p>
         </div>
       </div>
@@ -237,11 +241,11 @@ export const AcademicTerminal: React.FC<AcademicTerminalProps> = ({ globalQuery 
             {loading ? (
               <>
                 <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#4a9eff]" />
-                ⟳ FETCHING PAPERS... ({papers.length} indexed)
+                ⟳ LOADING SAMPLE RECORDS... ({papers.length} indexed)
               </>
             ) : (
               <>
-                <span>▶</span> FETCH PAPERS ({selectedTopics.length} DOMAINS)
+                <span>▶</span> LOAD SAMPLE PAPERS ({selectedTopics.length} DOMAINS)
               </>
             )}
           </button>
@@ -253,7 +257,7 @@ export const AcademicTerminal: React.FC<AcademicTerminalProps> = ({ globalQuery 
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Filter retrieved papers by keywords, title, author, or tags..."
+              placeholder="Filter sample records by keywords, title, author, or tags..."
               className="w-full bg-[#0c0c14] border border-[#2a2a3a] focus:border-[#4a9eff] text-xs text-[#e8e6e1] pl-9 pr-3 py-3 rounded outline-none placeholder-[#444] font-mono transition-colors"
             />
           </div>
@@ -264,7 +268,7 @@ export const AcademicTerminal: React.FC<AcademicTerminalProps> = ({ globalQuery 
               type="text"
               value={customQuery}
               onChange={(e) => setCustomQuery(e.target.value)}
-              placeholder="Inject custom topic..."
+              placeholder="Create synthetic demo topic..."
               className="bg-[#0c0c14] border border-[#2a2a3a] focus:border-[#4a9eff] text-xs text-[#e8e6e1] px-3 py-3 rounded outline-none placeholder-[#444] font-mono w-44"
             />
             <button

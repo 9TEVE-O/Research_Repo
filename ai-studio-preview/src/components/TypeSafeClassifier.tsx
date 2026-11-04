@@ -70,7 +70,7 @@ export const TypeSafeClassifier: React.FC = () => {
   const [sourceText, setSourceText] = useState(PRESET_EXAMPLES[0].source_text);
   const [sourceUrl, setSourceUrl] = useState(PRESET_EXAMPLES[0].source_url);
   const [sourceAccessedAt, setSourceAccessedAt] = useState(PRESET_EXAMPLES[0].source_accessed_at);
-  const [model, setModel] = useState("jev-latest");
+  // No external model is configured. This is a local rule-based demonstration.
   const [loading, setLoading] = useState(false);
   const [receipt, setReceipt] = useState<ClassificationReceipt | null>(null);
 
@@ -119,24 +119,24 @@ export const TypeSafeClassifier: React.FC = () => {
       reasoning = "The supplied text explicitly acknowledges conflicting red-teaming benchmarks, rendering an automated determination unreliable.";
     } else if (sLower.includes("mit") && cLower.includes("mit")) {
       outcome = "SUPPORTED";
-      reasoning = "The supplied text explicitly asserts 'Licence: MIT', directly verifying the claim within full scope.";
+      reasoning = "Local demonstration rule matched MIT in both text fields. This does not verify a licence or source.";
     } else {
-      outcome = "SUPPORTED";
-      reasoning = "The supplied source text directly corroborates the factual assertion without contradiction.";
+      outcome = "ABSTAIN";
+      reasoning = "Local rules cannot evaluate this claim. No external source or provider model has been checked.";
     }
 
     setReceipt({
       status: outcome,
       confidence: outcome === "ABSTAIN" ? 0.45 : outcome === "INSUFFICIENT" ? 0.72 : 0.98,
       contract_version: "claim-source-support-v0.1",
-      model: model,
+      model: "local-rules-demo (not a TypeSafe model)",
       evaluated_at: new Date().toISOString(),
       input_hash: hash,
       review_required: true,
       promotion_status: "NOT_PROMOTED",
       token_usage: {
-        input_tokens: Math.floor(120 + claim.length / 4 + sourceText.length / 4),
-        output_tokens: 38,
+        input_tokens: 0,
+        output_tokens: 0,
       },
       reasoning: reasoning,
     });
@@ -190,7 +190,10 @@ export const TypeSafeClassifier: React.FC = () => {
             TypeSafe Evidence Verification
           </h1>
           <p className="text-[#888] text-xs sm:text-sm mt-1">
-            Evaluate claims against supplied source citations. All classifications fail closed with review_required: true and promotion_status: NOT_PROMOTED.
+            Simulated classification using local heuristics only; not connected to TypeSafe or any model. Input sources and outcomes are not verified.
+          </p>
+          <p role="status" className="mt-3 rounded border border-amber-700/50 bg-amber-950/30 p-3 text-xs text-amber-200">
+            LOCAL HEURISTICS DEMO · No TypeSafe provider request, authenticated model evaluation, independent source check or real token usage. Results are illustrative and must not be treated as verified findings.
           </p>
         </div>
       </div>
@@ -288,15 +291,7 @@ export const TypeSafeClassifier: React.FC = () => {
             {/* Model & Submit */}
             <div className="pt-2 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-[#666] font-mono uppercase">Model:</span>
-                <select
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  className="bg-[#111118] border border-[#2a2a3a] text-xs text-[#ccc] px-2 py-1.5 rounded outline-none font-mono"
-                >
-                  <option value="jev-latest">jev-latest (default)</option>
-                  <option value="jev-2026-q1">jev-2026-q1 (pinned)</option>
-                </select>
+                <span className="text-[10px] text-[#aaa] font-mono uppercase">Local heuristics demo · no model call</span>
               </div>
 
               <button
@@ -322,7 +317,7 @@ export const TypeSafeClassifier: React.FC = () => {
             <div>
               <div className="text-xs text-emerald-400 font-semibold tracking-wider uppercase mb-4 flex items-center justify-between">
                 <span className="flex items-center gap-2">
-                  <FileCheck className="w-4 h-4 text-emerald-400" /> Formal TypeSafe Receipt
+                  <FileCheck className="w-4 h-4 text-emerald-400" /> Local Simulation Receipt (Not Provider-Generated)
                 </span>
                 <span className="text-[10px] text-[#666] font-mono">contract: claim-source-support-v0.1</span>
               </div>
@@ -341,7 +336,7 @@ export const TypeSafeClassifier: React.FC = () => {
                             {receipt.status}
                           </div>
                           <span className="text-xs font-mono text-[#aaa]">
-                            conf: {(receipt.confidence * 100).toFixed(0)}%
+                            local demo · not verified
                           </span>
                         </div>
                         <div className="text-xs text-[#ddd] mb-2 font-mono">
@@ -383,7 +378,7 @@ export const TypeSafeClassifier: React.FC = () => {
                 </div>
               ) : (
                 <div className="p-12 text-center text-xs text-[#555] border border-dashed border-[#222233] rounded">
-                  Submit a claim and source text to generate a cryptographic TypeSafe classification receipt.
+                  Submit sample inputs for a local-rule simulation. An input hash does not verify the source or outcome.
                 </div>
               )}
             </div>
@@ -395,7 +390,7 @@ export const TypeSafeClassifier: React.FC = () => {
                   <Clock className="w-3 h-3" /> {receipt.evaluated_at}
                 </span>
                 <span>
-                  tokens: {receipt.token_usage.input_tokens} in / {receipt.token_usage.output_tokens} out
+                  no model invoked · tokens: 0
                 </span>
               </div>
             )}

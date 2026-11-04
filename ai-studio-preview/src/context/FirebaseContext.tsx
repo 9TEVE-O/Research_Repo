@@ -23,6 +23,7 @@ import {
   googleProvider,
   handleFirestoreError,
   OperationType,
+  FIREBASE_ENABLED,
 } from '../firebase';
 import { INITIAL_PAPERS, Paper } from '../data/papersData';
 import { INITIAL_REPOSITORIES, ScoredRepository } from '../data/reposData';
@@ -135,8 +136,13 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [localPapers, setLocalPapers] = useState<Paper[]>([]);
   const [localRepos, setLocalRepos] = useState<ScoredRepository[]>([]);
 
-  // 1. Track Firebase Auth state and bootstrap /users/{userId}
+  // 1. In the review build, do not subscribe to Auth or contact Firestore.
   useEffect(() => {
+    if (!FIREBASE_ENABLED) {
+      setAuthReady(true);
+      setProfileReady(false);
+      return;
+    }
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       setAuthReady(true);
@@ -177,7 +183,7 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // 2. Attach Firestore real-time listeners once authenticated and profile exists
   useEffect(() => {
-    if (!authReady || !user || !profileReady) return;
+    if (!FIREBASE_ENABLED || !authReady || !user || !profileReady) return;
     const uid = sanitizeId(user.uid);
 
     // Bookmarks listener
@@ -305,6 +311,10 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [authReady, user, profileReady]);
 
   const signInWithGoogle = useCallback(async () => {
+    if (!FIREBASE_ENABLED) {
+      setAuthError('Firebase sign-in is unavailable in this offline review build.');
+      return;
+    }
     setAuthError(null);
     try {
       await signInWithPopup(auth, googleProvider);
@@ -314,6 +324,7 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   const signOutUser = useCallback(async () => {
+    if (!FIREBASE_ENABLED) return;
     setAuthError(null);
     try {
       await signOut(auth);

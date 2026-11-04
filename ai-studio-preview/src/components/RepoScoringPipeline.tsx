@@ -32,12 +32,12 @@ export const RepoScoringPipeline: React.FC<RepoScoringPipelineProps> = ({ global
   const [newRepoTopics, setNewRepoTopics] = useState("");
 
   const pipelineSteps = [
-    { name: "Candidate Fetch", desc: "Querying GitHub Search API for LLM/AI repositories" },
-    { name: "Deterministic Pre-Filter", desc: "Validating star counts, activity & license existence" },
-    { name: "LLM Relevance Scoring", desc: "Invoking evaluation prompt: 0–100 score + reasoning + summary" },
+    { name: "Example Input", desc: "Reading bundled sample repository records, no GitHub API call" },
+    { name: "Example Filter", desc: "Filtering sample fields; stars and licences are not verified" },
+    { name: "Simulated Scores", desc: "Displaying example scores; no model is invoked" },
     { name: "Top-K Selection", desc: `Filtering candidates with score > ${scoreThreshold} (max ${topK})` },
-    { name: "Policy & Privacy Analysis", desc: "Scanning submodules, telemetry flags & third-party vectors" },
-    { name: "Report Compilation", desc: "Constructing daily research briefing" },
+    { name: "Example Policy Notes", desc: "Viewing synthetic policy notes; no scan performed" },
+    { name: "Demo Summary", desc: "Displaying a local example, not a research briefing" },
   ];
 
   const runPipeline = async () => {
@@ -75,7 +75,7 @@ export const RepoScoringPipeline: React.FC<RepoScoringPipelineProps> = ({ global
     e.preventDefault();
     if (!newRepoName.trim()) return;
 
-    const simulatedScore = Math.floor(65 + Math.random() * 32);
+    const simulatedScore = 0; // A manually added candidate has not been scored.
     const topicsArr = newRepoTopics
       .split(",")
       .map((t) => t.trim())
@@ -87,20 +87,20 @@ export const RepoScoringPipeline: React.FC<RepoScoringPipelineProps> = ({ global
       url: `https://github.com/${newRepoName}`,
       description: newRepoDesc || "Automated AI agent candidate for research evaluation.",
       relevance_score: simulatedScore,
-      summary: `Automated assessment: ${newRepoName} introduces specialized tooling for machine intelligence and evaluation pipelines.`,
-      reason: `Evaluated score of ${simulatedScore}/100 reflects strong alignment with current LLM workflow architectures.`,
-      stars: Math.floor(500 + Math.random() * 8000),
-      forks: Math.floor(80 + Math.random() * 900),
+      summary: `Unverified example candidate: ${newRepoName}. No source inspection performed.`,
+      reason: "Unscored: no provider or local verification performed.",
+      stars: 0, // Unknown; placeholder is not an observed star count
+      forks: 0, // Unknown; placeholder is not an observed fork count
       language: "Python",
-      license: "MIT",
+      license: "Unverified",
       topics: topicsArr.length > 0 ? topicsArr : ["ai", "agents", "llm"],
       updated_at: new Date().toISOString().split("T")[0],
       policy: {
-        privacy_summary: "Automated scan: clean local execution with standard HTTPS outbound.",
-        severity_counts: { high: 0, medium: 0, low: 1 },
-        third_party_mentions: ["PyPI", "GitHub Actions"],
-        data_sharing_references: ["Standard client telemetry"],
-        detected_technologies: ["Python 3.11", "pytest"],
+        privacy_summary: "Not assessed. No privacy or security scan performed.",
+        severity_counts: { high: 0, medium: 0, low: 0 },
+        third_party_mentions: [],
+        data_sharing_references: [],
+        detected_technologies: [],
       },
     });
 
@@ -124,7 +124,10 @@ export const RepoScoringPipeline: React.FC<RepoScoringPipelineProps> = ({ global
             AI Repository Discovery & Scoring
           </h1>
           <p className="text-[#888] text-xs sm:text-sm mt-1">
-            Deterministic candidate ingestion, LLM relevance scoring (0–100), top-k selection, and policy terms analysis
+            Simulated data only. No live GitHub search, LLM relevance scoring, or verified policy analysis.
+          </p>
+          <p role="status" className="mt-3 rounded border border-amber-700/50 bg-amber-950/30 p-3 text-xs text-amber-200">
+            SIMULATED DATA · Repository rankings, scores, stars, licences and policy notes are unverified examples. This preview does not call GitHub, run an LLM, or scan repository contents.
           </p>
         </div>
       </div>
@@ -192,7 +195,7 @@ export const RepoScoringPipeline: React.FC<RepoScoringPipelineProps> = ({ global
               }`}
             >
               <Play className={`w-3.5 h-3.5 ${isRunning ? "animate-pulse" : ""}`} />
-              {isRunning ? "Executing Pipeline..." : "Execute Full Pipeline"}
+              {isRunning ? "Running Simulation..." : "Run Simulated Pipeline"}
             </button>
           </div>
 
@@ -282,7 +285,7 @@ export const RepoScoringPipeline: React.FC<RepoScoringPipelineProps> = ({ global
         {/* Qualifying Repositories Output */}
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div className="text-xs text-[#888] font-mono uppercase tracking-widest">
-            QUALIFIED CANDIDATES (SCORE &gt; {scoreThreshold}) — {qualifyingRepos.length} SELECTED (TOP {topK})
+            SAMPLE CANDIDATES (UNVERIFIED SCORE &gt; {scoreThreshold}) — {qualifyingRepos.length} SELECTED (TOP {topK})
             {globalQuery && (
               <span className="ml-2 text-[#4a9eff]">
                 [FILTERED BY GLOBAL SEARCH: "{globalQuery}"]
