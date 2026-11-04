@@ -45,7 +45,7 @@ try {
       } catch (e) { results.push({ tab: name, rendered: false, error: String(e).slice(0, 180) }); }
     }
     record('navigation-' + device.name, results.every(x => x.rendered), JSON.stringify(results));
-    const disclosure = /simulat(?:ed|ion)|synthetic|sample data|demo (?:only|data)|not (?:verified|live|connected)|mock data/i;
+    const disclosure = /\b(?:simulated (?:data|papers?|results?|research|pipeline)|synthetic (?:data|papers?|results?|research)|demo (?:mode|only|data)|mock data|no live retrieval|not verified|not connected to (?:arxiv|github|typesafe|firebase))\b/i;
     try {
       await page.getByRole('button', { name: 'Repo Scoring Agent', exact: true }).click();
       const text = await page.locator('main').innerText();
@@ -57,6 +57,17 @@ try {
       const liveClaim = /Live retrieval/i.test(paperText);
       record('academic-disclosure-' + device.name, !liveClaim || disclosure.test(paperText), 'Claims live retrieval=' + liveClaim + ', visible simulation disclosure=' + disclosure.test(paperText));
     } catch (e) { record('research-disclosure-' + device.name, false, String(e).slice(0, 220)); }
+    try {
+      await page.getByRole('button', { name: 'TypeSafe Evidence', exact: true }).click();
+      await page.getByRole('button', { name: 'Assess Evidence', exact: true }).click({ timeout: 7000 });
+      await page.waitForTimeout(1100);
+      const typeText = await page.locator('main').innerText();
+      const receiptVisible = /SHA-256 Input Hash/i.test(typeText) && /NOT_PROMOTED/i.test(typeText);
+      const isMarkedAsLocal = /local heuristics?|simulated classification|mock classifier|not (?:a|the) (?:real )?provider|not connected to typesafe/i.test(typeText);
+      record('typesafe-receipt-' + device.name, receiptVisible, 'Evaluation receipt displayed=' + receiptVisible);
+      record('typesafe-provider-disclosure-' + device.name, isMarkedAsLocal, 'Local-rule simulator clearly disclosed=' + isMarkedAsLocal);
+      await page.screenshot({ path: out + '/' + device.name + '-typesafe.png', fullPage: true });
+    } catch (e) { record('typesafe-inspection-' + device.name, false, String(e).slice(0, 260)); }
     await context.close();
   }
 } finally { await browser.close(); }
