@@ -1,0 +1,338 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net: Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core Primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function userProfileExists() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    // Validation Blueprint: UserProfile
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['ownerId', 'displayName', 'activeTabPreference', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerId', 'displayName', 'activeTabPreference', 'createdAt', 'updatedAt'])
+        && data.ownerId is string
+        && data.ownerId.size() >= 1
+        && data.ownerId.size() <= 128
+        && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.ownerId == request.auth.uid
+        && data.displayName is string
+        && data.displayName.size() >= 1
+        && data.displayName.size() <= 100
+        && data.activeTabPreference is string
+        && data.activeTabPreference.size() >= 1
+        && data.activeTabPreference.size() <= 32
+        && data.activeTabPreference in ['terminal', 'discovery', 'knowledge-graph', 'typesafe', 'reports', 'guardrails']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint: Bookmark
+    function isValidBookmark(data) {
+      return data.keys().hasAll(['ownerId', 'itemId', 'itemType', 'title', 'sourceOrLanguage', 'url', 'notes', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerId', 'itemId', 'itemType', 'title', 'sourceOrLanguage', 'url', 'notes', 'createdAt', 'updatedAt'])
+        && data.ownerId is string
+        && data.ownerId.size() >= 1
+        && data.ownerId.size() <= 128
+        && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.ownerId == request.auth.uid
+        && data.itemId is string
+        && data.itemId.size() >= 1
+        && data.itemId.size() <= 128
+        && data.itemId.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.itemType is string
+        && data.itemType.size() >= 1
+        && data.itemType.size() <= 20
+        && data.itemType in ['paper', 'repository']
+        && data.title is string
+        && data.title.size() >= 1
+        && data.title.size() <= 300
+        && data.sourceOrLanguage is string
+        && data.sourceOrLanguage.size() >= 1
+        && data.sourceOrLanguage.size() <= 100
+        && data.url is string
+        && data.url.size() >= 1
+        && data.url.size() <= 500
+        && data.notes is string
+        && data.notes.size() >= 0
+        && data.notes.size() <= 500
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint: CustomPaper
+    function isValidCustomPaper(data) {
+      return data.keys().hasAll(['ownerId', 'topic', 'topicLabel', 'title', 'authors', 'source', 'date', 'abstract', 'url', 'doi', 'createdAt'])
+        && data.keys().hasOnly(['ownerId', 'topic', 'topicLabel', 'title', 'authors', 'source', 'date', 'abstract', 'url', 'doi', 'createdAt'])
+        && data.ownerId is string
+        && data.ownerId.size() >= 1
+        && data.ownerId.size() <= 128
+        && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.ownerId == request.auth.uid
+        && data.topic is string
+        && data.topic.size() >= 1
+        && data.topic.size() <= 50
+        && data.topicLabel is string
+        && data.topicLabel.size() >= 1
+        && data.topicLabel.size() <= 100
+        && data.title is string
+        && data.title.size() >= 1
+        && data.title.size() <= 300
+        && data.authors is string
+        && data.authors.size() >= 1
+        && data.authors.size() <= 200
+        && data.source is string
+        && data.source.size() >= 1
+        && data.source.size() <= 60
+        && data.date is string
+        && data.date.size() >= 1
+        && data.date.size() <= 40
+        && data.abstract is string
+        && data.abstract.size() >= 1
+        && data.abstract.size() <= 1000
+        && data.url is string
+        && data.url.size() >= 1
+        && data.url.size() <= 500
+        && data.doi is string
+        && data.doi.size() >= 1
+        && data.doi.size() <= 100
+        && data.createdAt is timestamp;
+    }
+
+    // Validation Blueprint: CustomRepo
+    function isValidCustomRepo(data) {
+      return data.keys().hasAll(['ownerId', 'name', 'full_name', 'url', 'description', 'relevance_score', 'summary', 'reason', 'language', 'createdAt'])
+        && data.keys().hasOnly(['ownerId', 'name', 'full_name', 'url', 'description', 'relevance_score', 'summary', 'reason', 'language', 'createdAt'])
+        && data.ownerId is string
+        && data.ownerId.size() >= 1
+        && data.ownerId.size() <= 128
+        && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.ownerId == request.auth.uid
+        && data.name is string
+        && data.name.size() >= 1
+        && data.name.size() <= 100
+        && data.full_name is string
+        && data.full_name.size() >= 1
+        && data.full_name.size() <= 200
+        && data.url is string
+        && data.url.size() >= 1
+        && data.url.size() <= 500
+        && data.description is string
+        && data.description.size() >= 1
+        && data.description.size() <= 500
+        && data.relevance_score is int
+        && data.relevance_score >= 0
+        && data.relevance_score <= 100
+        && data.summary is string
+        && data.summary.size() >= 1
+        && data.summary.size() <= 1000
+        && data.reason is string
+        && data.reason.size() >= 1
+        && data.reason.size() <= 500
+        && data.language is string
+        && data.language.size() >= 1
+        && data.language.size() <= 60
+        && data.createdAt is timestamp;
+    }
+
+    // Validation Blueprint: SearchHistory
+    function isValidSearchHistory(data) {
+      return data.keys().hasAll(['ownerId', 'query', 'contextTab', 'createdAt'])
+        && data.keys().hasOnly(['ownerId', 'query', 'contextTab', 'createdAt'])
+        && data.ownerId is string
+        && data.ownerId.size() >= 1
+        && data.ownerId.size() <= 128
+        && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.ownerId == request.auth.uid
+        && data.query is string
+        && data.query.size() >= 1
+        && data.query.size() <= 200
+        && data.contextTab is string
+        && data.contextTab.size() >= 1
+        && data.contextTab.size() <= 32
+        && data.contextTab in ['terminal', 'discovery', 'knowledge-graph', 'typesafe', 'reports', 'guardrails']
+        && data.createdAt is timestamp;
+    }
+
+    // Collection: /users/{userId}
+    match /users/{userId} {
+      allow get: if isSignedIn()
+        && isVerified()
+        && isValidId(userId)
+        && request.auth.uid == userId
+        && (resource == null || existing().ownerId == request.auth.uid);
+
+      allow list: if false;
+
+      allow create: if isSignedIn()
+        && isVerified()
+        && isValidId(userId)
+        && request.auth.uid == userId
+        && isValidUserProfile(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isSignedIn()
+        && isVerified()
+        && isValidUserProfile(incoming())
+        && isValidId(userId)
+        && request.auth.uid == userId
+        && existing().ownerId == request.auth.uid
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          // Action: Update Preferences or Display Name
+          incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'activeTabPreference', 'updatedAt'])
+        );
+
+      allow delete: if isSignedIn()
+        && isVerified()
+        && isValidId(userId)
+        && request.auth.uid == userId
+        && existing().ownerId == request.auth.uid;
+    }
+
+    // Collection: /bookmarks/{bookmarkId}
+    match /bookmarks/{bookmarkId} {
+      allow get: if isSignedIn()
+        && isVerified()
+        && isValidId(bookmarkId)
+        && existing().ownerId == request.auth.uid;
+
+      allow list: if isSignedIn()
+        && isVerified()
+        && existing().ownerId == request.auth.uid;
+
+      allow create: if isSignedIn()
+        && isVerified()
+        && isValidId(bookmarkId)
+        && isValidBookmark(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && userProfileExists();
+
+      allow update: if isSignedIn()
+        && isVerified()
+        && isValidBookmark(incoming())
+        && isValidId(bookmarkId)
+        && existing().ownerId == request.auth.uid
+        && incoming().ownerId == existing().ownerId
+        && incoming().itemId == existing().itemId
+        && incoming().itemType == existing().itemType
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          // Action: Update Bookmark Notes
+          incoming().diff(existing()).affectedKeys().hasOnly(['notes', 'updatedAt'])
+        );
+
+      allow delete: if isSignedIn()
+        && isVerified()
+        && isValidId(bookmarkId)
+        && existing().ownerId == request.auth.uid;
+    }
+
+    // Collection: /customPapers/{paperId}
+    match /customPapers/{paperId} {
+      allow get: if isSignedIn()
+        && isVerified()
+        && isValidId(paperId)
+        && existing().ownerId == request.auth.uid;
+
+      allow list: if isSignedIn()
+        && isVerified()
+        && existing().ownerId == request.auth.uid;
+
+      allow create: if isSignedIn()
+        && isVerified()
+        && isValidId(paperId)
+        && isValidCustomPaper(incoming())
+        && incoming().createdAt == request.time
+        && userProfileExists();
+
+      allow update: if false;
+
+      allow delete: if isSignedIn()
+        && isVerified()
+        && isValidId(paperId)
+        && existing().ownerId == request.auth.uid;
+    }
+
+    // Collection: /customRepos/{repoId}
+    match /customRepos/{repoId} {
+      allow get: if isSignedIn()
+        && isVerified()
+        && isValidId(repoId)
+        && existing().ownerId == request.auth.uid;
+
+      allow list: if isSignedIn()
+        && isVerified()
+        && existing().ownerId == request.auth.uid;
+
+      allow create: if isSignedIn()
+        && isVerified()
+        && isValidId(repoId)
+        && isValidCustomRepo(incoming())
+        && incoming().createdAt == request.time
+        && userProfileExists();
+
+      allow update: if false;
+
+      allow delete: if isSignedIn()
+        && isVerified()
+        && isValidId(repoId)
+        && existing().ownerId == request.auth.uid;
+    }
+
+    // Collection: /searchHistory/{searchId}
+    match /searchHistory/{searchId} {
+      allow get: if isSignedIn()
+        && isVerified()
+        && isValidId(searchId)
+        && existing().ownerId == request.auth.uid;
+
+      allow list: if isSignedIn()
+        && isVerified()
+        && existing().ownerId == request.auth.uid;
+
+      allow create: if isSignedIn()
+        && isVerified()
+        && isValidId(searchId)
+        && isValidSearchHistory(incoming())
+        && incoming().createdAt == request.time
+        && userProfileExists();
+
+      allow update: if false;
+
+      allow delete: if isSignedIn()
+        && isVerified()
+        && isValidId(searchId)
+        && existing().ownerId == request.auth.uid;
+    }
+  }
+}
