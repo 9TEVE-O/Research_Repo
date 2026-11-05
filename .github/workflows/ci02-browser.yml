@@ -1,0 +1,48 @@
+name: CI-02 Isolated Browser Verification
+on:
+  push:
+    branches:
+      - review/ai-studio-export-20261104
+
+permissions:
+  contents: read
+
+jobs:
+  browser-review:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - name: Install locked app dependencies without scripts
+        working-directory: ai-studio-preview
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Typecheck and build in isolated runner
+        working-directory: ai-studio-preview
+        run: |
+          bun run lint
+          bun run build
+      - name: Install headless Chromium test tooling
+        working-directory: ai-studio-preview
+        run: |
+          npm install --no-save --ignore-scripts --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Serve local-only preview and run browser tests
+        working-directory: ai-studio-preview
+        run: |
+          bun run preview --host 127.0.0.1 --port 4173 > "$RUNNER_TEMP/ci02-preview-server.log" 2>&1 &
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:4173/ >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:4173/ >/dev/null
+          node tests/ci02.browser.mjs
+      - name: Preserve browser screenshots and test receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci02-browser-evidence
+          path: ai-studio-preview/ci02-evidence/
+          if-no-files-found: warn
