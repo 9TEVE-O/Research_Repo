@@ -21,15 +21,22 @@ Research_Repo is a Python-based research automation project that searches GitHub
 
 ```text
 Research_Repo/
-├── agent.py
-├── selector.py
-├── report.py
-├── email_sender.py
-├── gist_uploader.py
-├── policy_analysis.py
+├── agent.py                        # CLI entry point for the daily agent
+├── pipeline.py                     # research orchestration (fetch → score → report → email → gist)
+├── config.py  models.py  scoring.py  selector.py  report.py
+├── email_sender.py  gist_uploader.py  github_client.py  storage.py
+├── policy_analysis.py  policy_analyzer.py
+├── owned_research.py                # standalone inventory-comparison CLI
+├── typesafe_evidence.py            # opt-in claim classification CLI
+├── knowledge_graph/                # knowledge-graph extraction and retrieval
+├── src/                            # auxiliary pipeline/guardrails modules
+├── tests/
+├── ai-studio-preview/              # isolated, UNVERIFIED React/Firebase demo UI (not production)
+├── academic-paper-terminal/        # separate JS paper-terminal app
 ├── external/
-│   └── AI-Policy-Terms-Analyzer/
-└── requirements.lock
+│   └── AI-Policy-Terms-Analyzer/   # vendored submodule
+├── requirements.in   requirements.lock
+└── requirements-dev.in   requirements-dev.lock
 ```
 
 ---

@@ -1,8 +1,15 @@
 name: CI-02 Isolated Browser Verification
 on:
   push:
-    branches:
-      - review/ai-studio-export-20261104
+    branches: [main]
+    paths:
+      - 'ai-studio-preview/**'
+      - '.github/workflows/ci02-browser.yml'
+  pull_request:
+    paths:
+      - 'ai-studio-preview/**'
+      - '.github/workflows/ci02-browser.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
