@@ -28,7 +28,14 @@ jobs:
           SMTP_PORT: ${{ vars.SMTP_PORT || '587' }}
           SMTP_USER: ${{ secrets.SMTP_USER }}
           REPORT_RECIPIENT: ${{ secrets.EMAIL_TO }}
-        run: python agent.py
+        run: |
+          # Fail loudly if required secrets are missing, instead of exiting 0 with no report.
+          : "${OPENAI_API_KEY:?OPENAI_API_KEY is not set}"
+          : "${GITHUB_TOKEN:?GITHUB_TOKEN is not set}"
+          : "${REPORT_RECIPIENT:?REPORT_RECIPIENT is not set}"
+          python agent.py
+          # The agent's purpose is to produce a report; treat a missing report as a failure.
+          test -f reports/latest.md
 
       - name: Check Gist config
         id: gist_config
