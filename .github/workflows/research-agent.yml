@@ -29,13 +29,19 @@ jobs:
           SMTP_USER: ${{ secrets.SMTP_USER }}
           REPORT_RECIPIENT: ${{ secrets.EMAIL_TO }}
         run: |
-          # Fail loudly if required secrets are missing, instead of exiting 0 with no report.
-          : "${OPENAI_API_KEY:?OPENAI_API_KEY is not set}"
+          # Clear any stale output: a previous report is not a successful new scan.
+          rm -f reports/latest.md
           : "${GITHUB_TOKEN:?GITHUB_TOKEN is not set}"
-          : "${REPORT_RECIPIENT:?REPORT_RECIPIENT is not set}"
           python agent.py
-          # The agent's purpose is to produce a report; treat a missing report as a failure.
-          test -f reports/latest.md
+          test -s reports/latest.md
+
+      - name: Retain research report as downloadable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-research-report
+          path: reports/latest.md
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Check Gist config
         id: gist_config
