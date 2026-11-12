@@ -1,0 +1,46 @@
+name: Research Scan Live Smoke (no API secrets)
+on:
+  pull_request:
+    paths:
+      - 'agent.py'
+      - 'config.py'
+      - 'pipeline.py'
+      - 'scoring.py'
+      - 'github_client.py'
+      - 'report.py'
+      - 'tests/**'
+      - '.github/workflows/research-agent.yml'
+      - '.github/workflows/research-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  no-secret-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install locked runtime dependencies
+        run: python -m pip install --require-hashes -r requirements.lock
+      - name: Live GitHub discovery and report generation
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SEARCH_PER_PAGE: '3'
+          TOP_K: '2'
+        run: |
+          rm -f reports/latest.md
+          python agent.py
+          test -s reports/latest.md
+          grep -q 'GitHub metadata-only heuristic (no AI evaluation)' reports/latest.md
+      - name: Retain smoke report
+        uses: actions/upload-artifact@v4
+        with:
+          name: research-smoke-report
+          path: reports/latest.md
+          if-no-files-found: error
+          retention-days: 7

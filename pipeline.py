@@ -12,7 +12,7 @@ from github_client import fetch_candidates
 from knowledge_graph import GraphRetriever, extract_graph_from_repos
 from models import ScoredRepo
 from report import build_markdown_report
-from scoring import score_all
+from scoring import score_all, score_metadata
 from selector import select_top_k
 from storage import save_repos
 from email_sender import send_report_via_email
@@ -51,8 +51,6 @@ def run(cfg: Config | None = None) -> None:
     today = date.today().isoformat()
     logger.info("Starting daily research agent for %s.", today)
 
-    openai_client = openai.OpenAI(api_key=cfg.openai_api_key)
-
     # ── 1. Fetch candidate repositories ──────────────────────────────────────────────
     try:
         raw_candidates = fetch_candidates(
@@ -68,8 +66,19 @@ def run(cfg: Config | None = None) -> None:
         logger.warning("No candidates returned from GitHub search. Exiting.")
         return
 
-    # ── 2. Score each candidate with the LLM ──────────────────────────────────────────────
-    scored = score_all(raw_candidates, openai_client, model=cfg.llm_model)
+    # ── 2. Score with OpenAI when configured, otherwise public GitHub metadata.
+    # Do not silently downgrade a configured but failing paid API.
+    if cfg.openai_api_key:
+        openai_client = openai.OpenAI(api_key=cfg.openai_api_key)
+        scored = score_all(raw_candidates, openai_client, model=cfg.llm_model)
+        scoring_method = f"OpenAI LLM ({cfg.llm_model})"
+    else:
+        logger.warning(
+            "OPENAI_API_KEY is absent: using deterministic metadata scoring, "
+            "not an AI evaluation."
+        )
+        scored = score_metadata(raw_candidates)
+        scoring_method = "GitHub metadata-only heuristic (no AI evaluation)"
 
     # ── 2b. Annotate with policy / terms analysis (best-effort) ──────────────────────────
     # Import lazily so that a missing submodule does not prevent pipeline
@@ -114,7 +123,9 @@ def run(cfg: Config | None = None) -> None:
     save_repos(top_repos, report_date=today)
 
     # ── 6. Build Markdown report ────────────────────────────────────────────────────────────
-    report_markdown = build_markdown_report(top_repos, today)
+    report_markdown = build_markdown_report(
+        top_repos, today, scoring_method=scoring_method
+    )
     logger.info("Markdown report built (%d chars).", len(report_markdown))
 
     # ── 6b. Persist the report to reports/latest.md ──────────────────────────────────────
@@ -126,15 +137,16 @@ def run(cfg: Config | None = None) -> None:
     REPORT_PATH.write_text(report_markdown, encoding="utf-8")
     logger.info("Report written to %s.", REPORT_PATH)
 
-    # ── 7. Send email ───────────────────────────────────────────────────────────────────
-    # Re-raise after logging: email delivery is the primary purpose of a
-    # scheduled run, so a swallowed failure here would let the run report
-    # success (e.g. via CI's job status) while no report was actually sent.
-    try:
-        send_report_via_email(report_markdown, cfg.report_recipient)
-    except Exception as exc:  # noqa: BLE001
-        logger.error("Email delivery failed: %s", exc)
-        raise
+    # ── 7. Send email only if explicitly configured. In Actions, the report
+    # is always retained as a downloadable workflow artifact.
+    if cfg.report_recipient:
+        try:
+            send_report_via_email(report_markdown, cfg.report_recipient)
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Email delivery failed: %s", exc)
+            raise
+    else:
+        logger.info("Email is not configured; report retained on disk.")
 
     # ── 8. Update Gist ───────────────────────────────────────────────────────────────────
     if cfg.gist_id:

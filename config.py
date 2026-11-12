@@ -3,14 +3,10 @@
 import os
 from dataclasses import dataclass
 
-# Names of all required environment variables (used for validation).
-REQUIRED_ENV_VARS: tuple[str, ...] = (
-    "GITHUB_TOKEN",
-    "OPENAI_API_KEY",
-    "REPORT_RECIPIENT",
-    "SMTP_SERVER",
-    "SMTP_USER",
-    "SMTP_PASSWORD",
+# GitHub discovery is always required. OpenAI enrichment and email are optional.
+REQUIRED_ENV_VARS: tuple[str, ...] = ("GITHUB_TOKEN",)
+EMAIL_ENV_VARS: tuple[str, ...] = (
+    "REPORT_RECIPIENT", "SMTP_SERVER", "SMTP_USER", "SMTP_PASSWORD",
 )
 
 
@@ -21,8 +17,11 @@ def _env_int(name: str, default: int) -> int:
 
 
 def missing_required_vars() -> list[str]:
-    """Return names of required environment variables that are not set."""
-    return [name for name in REQUIRED_ENV_VARS if not os.environ.get(name)]
+    """Return missing GitHub credentials and incomplete optional email settings."""
+    required = list(REQUIRED_ENV_VARS)
+    if any(os.environ.get(name) for name in EMAIL_ENV_VARS):
+        required.extend(EMAIL_ENV_VARS)
+    return [name for name in required if not os.environ.get(name)]
 
 
 @dataclass
@@ -45,27 +44,23 @@ class Config:
     llm_model: str = "gpt-4o-mini"
 
     def is_valid(self) -> bool:
-        """Return True when all required variables are present."""
-        return all(
-            [
-                bool(self.github_token),
-                bool(self.openai_api_key),
-                bool(self.report_recipient),
-                bool(self.smtp_server),
-                bool(self.smtp_user),
-                bool(self.smtp_password),
-            ]
+        """Require GitHub; permit absent email, never partial email configuration."""
+        email = (
+            self.report_recipient, self.smtp_server, self.smtp_user,
+            self.smtp_password,
         )
+        return bool(self.github_token) and (not any(email) or all(email))
 
 
 def load_config() -> Config:
     """Read configuration from environment variables and return a Config.
 
     Required variables:
-        GITHUB_TOKEN, OPENAI_API_KEY, REPORT_RECIPIENT,
-        SMTP_SERVER, SMTP_USER, SMTP_PASSWORD
+        GITHUB_TOKEN
 
     Optional variables:
+        OPENAI_API_KEY (enables LLM scoring; otherwise use labelled metadata scoring)
+        REPORT_RECIPIENT, SMTP_SERVER, SMTP_USER, SMTP_PASSWORD (all or none)
         SMTP_PORT (default 587), GIST_ID, GITHUB_GIST_TOKEN, SEARCH_QUERY,
         SEARCH_PER_PAGE, TOP_K, SCORE_THRESHOLD, LLM_MODEL
 

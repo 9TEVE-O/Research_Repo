@@ -46,9 +46,9 @@ Research_Repo/
 ### Prerequisites
 
 - Python 3.10+
-- OpenAI API key
-- GitHub personal access token
-- SMTP-enabled email account (optional)
+- GitHub token (provided automatically by GitHub Actions)
+- OpenAI API key (optional, for AI scoring)
+- SMTP-enabled email account (optional, for emailed delivery)
 
 ### Installation
 
@@ -72,7 +72,7 @@ git submodule update --init --recursive
 | Variable | Purpose |
 |---|---|
 | `GITHUB_TOKEN` | GitHub repository search and Gist access |
-| `OPENAI_API_KEY` | LLM scoring |
+| `OPENAI_API_KEY` | Optional LLM scoring; otherwise labelled GitHub-metadata scoring |
 | `REPORT_RECIPIENT` | Report delivery email |
 | `SMTP_SERVER` | SMTP host |
 | `SMTP_PORT` | SMTP port |
@@ -80,13 +80,23 @@ git submodule update --init --recursive
 | `SMTP_PASSWORD` | SMTP password |
 | `GIST_ID` | Optional Gist update target |
 
+When running in GitHub Actions, every successful scan uploads `reports/latest.md`
+as a downloadable `daily-research-report` artifact (retained for 30 days).
+Without `OPENAI_API_KEY`, the report still runs using a **deterministic topic
+heuristic**, clearly labelled as **not an AI evaluation**. Setting an invalid
+OpenAI key does **not** silently switch modes. Email is disabled unless all
+four fields `REPORT_RECIPIENT`, `SMTP_SERVER`, `SMTP_USER` and
+`SMTP_PASSWORD` are supplied. Partial email configuration is an error.
+The scheduled scan still requires a real GitHub search and a nonempty report;
+a missing report fails the job.
+
 ---
 
 ## Usage
 
 ```bash
 export GITHUB_TOKEN="your-token"
-export OPENAI_API_KEY="your-openai-key"
+# Optional: export OPENAI_API_KEY="your-openai-key"
 python agent.py
 ```
 
