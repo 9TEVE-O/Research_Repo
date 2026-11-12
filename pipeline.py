@@ -2,6 +2,7 @@
 
 import logging
 from datetime import date
+from pathlib import Path
 
 import openai
 import requests
@@ -18,6 +19,12 @@ from email_sender import send_report_via_email
 from gist_uploader import upload_to_gist
 
 logger = logging.getLogger(__name__)
+
+# Location (relative to the working directory) where the generated Markdown
+# report is persisted.  The scheduled workflow publishes this file to a Gist
+# and treats its absence as a failed run, so the pipeline must write it on the
+# success path.
+REPORT_PATH = Path("reports/latest.md")
 
 
 def run(cfg: Config | None = None) -> None:
@@ -109,6 +116,15 @@ def run(cfg: Config | None = None) -> None:
     # ── 6. Build Markdown report ────────────────────────────────────────────────────────────
     report_markdown = build_markdown_report(top_repos, today)
     logger.info("Markdown report built (%d chars).", len(report_markdown))
+
+    # ── 6b. Persist the report to reports/latest.md ──────────────────────────────────────
+    # Write the report to disk before delivery.  The scheduled workflow
+    # publishes this file to a Gist and fails the run when it is missing, so a
+    # write error must propagate rather than letting the run report success
+    # with no persisted report.
+    REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    REPORT_PATH.write_text(report_markdown, encoding="utf-8")
+    logger.info("Report written to %s.", REPORT_PATH)
 
     # ── 7. Send email ───────────────────────────────────────────────────────────────────
     # Re-raise after logging: email delivery is the primary purpose of a
