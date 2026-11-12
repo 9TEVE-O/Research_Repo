@@ -41,6 +41,7 @@ jobs:
           test -s reports/latest.md
 
       - name: Retain research report as downloadable artifact
+        if: always()  # Keep a generated report even when optional delivery fails.
         uses: actions/upload-artifact@v4
         with:
           name: daily-research-report
