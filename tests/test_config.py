@@ -95,7 +95,7 @@ class TestMissingRequiredVars:
         for k in REQUIRED_ENV:
             monkeypatch.delenv(k, raising=False)
         missing = missing_required_vars()
-        assert set(missing) == set(REQUIRED_ENV.keys())
+        assert missing == ["GITHUB_TOKEN"]
 
     def test_partial_missing(self, monkeypatch):
         for k, v in REQUIRED_ENV.items():
@@ -103,3 +103,22 @@ class TestMissingRequiredVars:
         monkeypatch.delenv("SMTP_PASSWORD", raising=False)
         missing = missing_required_vars()
         assert missing == ["SMTP_PASSWORD"]
+
+
+class TestOptionalModes:
+    def test_github_token_alone_is_valid(self, monkeypatch):
+        for k in REQUIRED_ENV:
+            monkeypatch.delenv(k, raising=False)
+        monkeypatch.setenv("GITHUB_TOKEN", "actions-token")
+        assert load_config().is_valid()
+        assert missing_required_vars() == []
+
+    def test_partial_email_configuration_is_rejected(self, monkeypatch):
+        for k in REQUIRED_ENV:
+            monkeypatch.delenv(k, raising=False)
+        monkeypatch.setenv("GITHUB_TOKEN", "actions-token")
+        monkeypatch.setenv("REPORT_RECIPIENT", "you@example.com")
+        assert not load_config().is_valid()
+        assert set(missing_required_vars()) == {
+            "SMTP_SERVER", "SMTP_USER", "SMTP_PASSWORD"
+        }
