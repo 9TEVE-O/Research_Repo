@@ -9,8 +9,17 @@ delivery failure propagates instead of being swallowed.
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from config import Config
 from models import ScoredRepo
+
+
+@pytest.fixture(autouse=True)
+def _isolated_cwd(tmp_path, monkeypatch):
+    """Run every test in an isolated temp dir so a written reports/latest.md
+    never touches the real repository tree."""
+    monkeypatch.chdir(tmp_path)
 
 
 def _valid_config(**overrides) -> Config:
@@ -52,6 +61,23 @@ class TestConfigValidation:
         with patch("pipeline.fetch_candidates") as fetch_mock:
             run(cfg)
         fetch_mock.assert_not_called()
+
+    def test_early_exit_writes_no_report(self):
+        """An early exit (here: invalid config) must not create a report file."""
+        from pathlib import Path
+
+        from pipeline import run
+
+        cfg = Config(
+            github_token="",
+            openai_api_key="",
+            report_recipient="",
+            smtp_server="",
+            smtp_user="",
+            smtp_password="",
+        )
+        run(cfg)
+        assert not Path("reports/latest.md").exists()
 
 
 @patch("policy_analysis.annotate_with_policy", side_effect=lambda repos, token: repos)
@@ -141,3 +167,45 @@ class TestHappyPath:
         cfg = _valid_config(gist_id="abc123")
         with pytest.raises(RuntimeError, match="gist api down"):
             run(cfg)
+
+    def test_report_file_written_matches_emailed_markdown(
+        self,
+        mock_openai,
+        mock_fetch,
+        mock_score_all,
+        mock_save_repos,
+        mock_send_email,
+        mock_upload_gist,
+        mock_annotate,
+    ):
+        from pathlib import Path
+
+        from pipeline import run
+
+        run(_valid_config())
+
+        report_path = Path("reports/latest.md")
+        assert report_path.is_file()
+        emailed_markdown = mock_send_email.call_args[0][0]
+        assert report_path.read_text(encoding="utf-8") == emailed_markdown
+
+    def test_report_write_failure_propagates_before_delivery(
+        self,
+        mock_openai,
+        mock_fetch,
+        mock_score_all,
+        mock_save_repos,
+        mock_send_email,
+        mock_upload_gist,
+        mock_annotate,
+    ):
+        from pipeline import run
+
+        with patch("pipeline.REPORT_PATH") as mock_path:
+            mock_path.write_text.side_effect = OSError("disk full")
+            with pytest.raises(OSError, match="disk full"):
+                run(_valid_config())
+
+        # A failed write must abort the run before the report is delivered.
+        mock_send_email.assert_not_called()
+        mock_upload_gist.assert_not_called()
