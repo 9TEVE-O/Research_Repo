@@ -3,7 +3,9 @@
 import html
 
 
-def build_markdown_report(repos: list, date: str) -> str:
+def build_markdown_report(
+    repos: list, date: str, scoring_method: str = "OpenAI LLM"
+) -> str:
     """Return a formatted Markdown string for the daily research report.
 
     All LLM-returned text fields (summary, reason) are HTML-escaped before
@@ -26,6 +28,7 @@ def build_markdown_report(repos: list, date: str) -> str:
         "> Automatically generated summary of the top GitHub repositories "
         "for today.\n"
     )
+    lines.append(f"> Scoring method: {html.escape(scoring_method)}.\n")
 
     # ── Table of Contents ───────────────────────────────────────────────────
     lines.append("---\n")
