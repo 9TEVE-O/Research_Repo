@@ -1,5 +1,10 @@
 name: Daily Research Scan
 on:
+  # Verify a repaired scan on main immediately when its workflow changes.
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/research-agent.yml'
   schedule:
     - cron: '0 8 * * *'   # 8 AM UTC daily
   workflow_dispatch:       # manual trigger
