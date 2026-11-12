@@ -141,3 +141,47 @@ def score_all(
         "Successfully scored %d / %d candidates.", len(scored), len(candidates)
     )
     return scored
+
+
+def score_metadata(candidates: list[dict]) -> list[ScoredRepo]:
+    """No-API-key fallback using *only* GitHub metadata, not AI judgement.
+
+    The discovery query already filters for relevant topics. This bounded,
+    deterministic score preserves its star-sorted input order for ties.
+    It must never be presented as LLM scoring or a qualitative review.
+    """
+    results = []
+    for repo in candidates:
+        name = repo.get("full_name")
+        url = repo.get("html_url")
+        if not isinstance(name, str) or not isinstance(url, str) or not name or not url:
+            logger.warning("Skipping repository with missing GitHub name or URL.")
+            continue
+        raw_topics = repo.get("topics")
+        topics = {str(t).lower() for t in raw_topics} if isinstance(raw_topics, list) else set()
+        signals = {"llm", "research", "ai", "machine-learning", "generative-ai"}
+        matched = sorted(topics & signals)
+        score = min(
+            100,
+            55 + 10 * int("llm" in topics) + 10 * int("research" in topics)
+            + 5 * int("ai" in topics) + 5 * int("machine-learning" in topics)
+            + 5 * int("generative-ai" in topics),
+        )
+        description = repo.get("description")
+        summary = (description if isinstance(description, str) and description else
+                   "No description supplied by the repository owner.")[:1000]
+        reason = (
+            "Metadata-only topic heuristic; not an AI quality assessment. "
+            "Matching GitHub topics: " + (", ".join(matched) if matched else "none")
+        )
+        results.append(
+            ScoredRepo(
+                name=name,
+                url=url,
+                relevance_score=score,
+                summary=summary,
+                reason=reason,
+            )
+        )
+    logger.info("Metadata-scored %d / %d candidates.", len(results), len(candidates))
+    return results
