@@ -53,7 +53,8 @@ def validate_receipt(supplied_source, receipt):
         usage = response["usage"]
     except (KeyError, TypeError):
         raise ReceiptValidationError("Incomplete classifier response") from None
-    if not isinstance(answer, dict) or answer.get("type") != "choice" or answer.get("choice") not in LABELS:
+    if (not isinstance(answer, dict) or answer.get("type") != "choice" or
+            not isinstance(answer.get("choice"), str) or answer["choice"] not in LABELS):
         raise ReceiptValidationError("Unsupported classifier answer")
     probabilities = answer.get("probabilities")
     if not isinstance(probabilities, dict) or set(probabilities) != LABELS:
