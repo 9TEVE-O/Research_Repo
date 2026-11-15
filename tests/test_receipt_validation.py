@@ -99,3 +99,9 @@ def test_malformed_unhashable_choice_is_controlled_failure(bad_choice):
     receipt["raw_response"]["answers"]["source_support"]["choice"] = bad_choice
     with pytest.raises(ReceiptValidationError, match="Unsupported classifier answer"):
         validate_receipt(SOURCE, receipt)
+
+def test_huge_integer_probability_fails_closed_without_overflow():
+    receipt = receipt_for()
+    receipt["raw_response"]["answers"]["source_support"]["probabilities"]["SUPPORTED"] = 10 ** 400
+    with pytest.raises(ReceiptValidationError, match="Invalid probability"):
+        validate_receipt(SOURCE, receipt)
