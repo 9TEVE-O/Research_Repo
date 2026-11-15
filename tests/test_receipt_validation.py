@@ -91,3 +91,11 @@ def test_cli_invalid_receipt_exits_nonzero(tmp_path):
                         cwd=Path(__file__).parents[1], capture_output=True, text=True, timeout=10)
     assert cp.returncode != 0
     assert "input digest" in cp.stderr
+
+
+@pytest.mark.parametrize("bad_choice", [[], {}])
+def test_malformed_unhashable_choice_is_controlled_failure(bad_choice):
+    receipt = receipt_for()
+    receipt["raw_response"]["answers"]["source_support"]["choice"] = bad_choice
+    with pytest.raises(ReceiptValidationError, match="Unsupported classifier answer"):
+        validate_receipt(SOURCE, receipt)
