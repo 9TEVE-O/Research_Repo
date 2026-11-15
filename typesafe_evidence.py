@@ -130,14 +130,21 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input", type=Path, help="Claim/source JSON authorised for API transmission")
     parser.add_argument("--model", default=os.environ.get("TYPESAFE_MODEL", "jev-latest"))
+    parser.add_argument("--receipt", type=Path,
+                        help="Validate a saved receipt against the supplied source offline; no API call")
     args = parser.parse_args()
     try:
-        result = classify(
-            json.loads(args.input.read_text()), api_key=os.environ.get("TYPESAFE_API_KEY", ""),
-            model=args.model, opener=no_redirect_opener(),
-        )
+        record = json.loads(args.input.read_text())
+        if args.receipt is not None:
+            from receipt_validation import validate_receipt
+            result = validate_receipt(record, json.loads(args.receipt.read_text()))
+        else:
+            result = classify(
+                record, api_key=os.environ.get("TYPESAFE_API_KEY", ""),
+                model=args.model, opener=no_redirect_opener(),
+            )
     except (ClassificationError, OSError, ValueError) as exc:
-        parser.exit(1, f"Classification failed: {exc}\n")
+        parser.exit(1, f"Classification or receipt validation failed: {exc}\n")
     print(json.dumps(result, indent=2, allow_nan=False))
 
 
